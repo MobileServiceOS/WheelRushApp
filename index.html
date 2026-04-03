@@ -728,7 +728,7 @@ return (
             <div style={{fontSize:13,fontWeight:700,color:"#dc2626",marginBottom:6}}>⚠️ {underpricedJobs.length} Underpriced Job{underpricedJobs.length>1?"s":""}</div>
             {underpricedJobs.map(e=>{
               const minP=minimumPrice({service:e.service,jobCost:Number(e.cost||0),miles:entryMiles(e),cpm,dailyExpenseAmt:dailyExp,expectedJobs:4});
-              return <div key={e.id} style={{fontSize:11,color:"#dc2626",marginTop:2}}>• {e.service} · Charged {cur(e.revenue)} vs min {cur(minP)} → left {cur(minP-e.revenue)} on table</div>;
+              return <div key={e.id} style={{fontSize:11,color:"#dc2626",marginTop:2}}>• {e.service} · Charged {cur(e.revenue)} vs min {cur(minP)} | left {cur(minP-e.revenue)} on table</div>;
             })}
           </div>
         )}
