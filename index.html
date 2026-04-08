@@ -377,6 +377,13 @@ function fbListenTires(cb){ const c=fbTireCol(); if(!c) return ()=>{}; return c.
 async function fbLogSale(sale){ const c=fbSaleCol(); if(!c) return; await c.doc(String(sale.id)).set(sale); }
 async function fbSaveReceipt(r){ const c=fbReceiptCol(); if(!c) return; await c.doc(String(r.id)).set(r); }
 async function fbDelReceipt(id){ const c=fbReceiptCol(); if(!c) return; await c.doc(String(id)).delete(); }
+function fbListenReceipts(cb){
+  const c=fbReceiptCol(); if(!c){cb([]);return ()=>{};}
+  return c.onSnapshot(snap=>{
+    const docs=snap.docs.map(d=>({...d.data(),id:d.data().id||d.id}));
+    cb(docs);
+  }, ()=>cb([]));
+}
 
 // ════════════════════════════════════════════
 // ── FINANCE ENGINE (co-owner, accrued model) ──
@@ -2569,6 +2576,13 @@ function App(){
     _tireUnsub=fbListenTires(docs=>{
       if(docs.length>0){const sorted=docs.sort((a,b)=>a.rim-b.rim||a.size.localeCompare(b.size));setTires(sorted);saveTires(sorted);}
       else{const local=loadTires();const data=local||INITIAL_TIRES;setTires(data);fbSaveAllTires(data);}
+    });
+
+    // Listen for receipts from Firebase
+    fbListenReceipts(docs=>{
+      const sorted=[...docs].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      setReceipts(sorted);
+      saveReceipts(sorted);
     });
 
     // Health check
