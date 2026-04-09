@@ -698,6 +698,19 @@ function DashboardScreen({jobs, settings, setTab}){
             <span className="payout-name">{settings.owner2Name||"Owner 2"}</span>
             <span className={`payout-amount ${splits.owner2>0?"green":"red"}`}>{cur(splits.owner2)}</span>
           </div>
+          {(settings.taxRate||0)>0&&splits.profit>0&&(
+            <div style={{marginTop:10,padding:"8px 12px",background:"#fffbeb",borderRadius:8,border:"1px solid #fde68a"}}>
+              <div style={{fontSize:10,color:"#92400e",textTransform:"uppercase",letterSpacing:"0.5px",fontWeight:700,marginBottom:4}}>
+                💰 Set Aside for Taxes ({settings.taxRate||25}%)
+              </div>
+              <div style={{fontFamily:"IBM Plex Mono,monospace",fontSize:16,fontWeight:700,color:"#b45309"}}>
+                {cur(splits.profit*((settings.taxRate||25)/100))}
+              </div>
+              <div style={{fontSize:10,color:"#92400e",marginTop:2}}>
+                ~{cur(splits.profit*((settings.taxRate||25)/100)/2)} per owner — move to savings
+              </div>
+            </div>
+          )}
           <hr className="payout-divider"/>
           <div className="payout-calc">
             {payJobs.length} jobs · Rev {cur(payCalc.revenue)} − Costs {cur(payCalc.jobCosts)} − Fixed {cur(payCalc.overhead)} = {cur(payCalc.profit)}<br/>
@@ -807,9 +820,28 @@ function DashboardScreen({jobs, settings, setTab}){
 // ────────────────────────────────────────────────
 // ── ADD JOB SCREEN ──
 // ────────────────────────────────────────────────
-function AddJobScreen({onSave, onSaveAdd, settings}){
+function AddJobScreen({onSave, onSaveAdd, settings, prefillJob, onClearPrefill}){
   const [form,setForm]       = useState(()=>EMPTY_JOB());
   const [error,setError]     = useState("");
+
+  // Pre-fill form when repeating a job
+  useEffect(()=>{
+    if(prefillJob){
+      setForm({
+        date:TODAY(), service:prefillJob.service||"Tire Repair",
+        area:prefillJob.area||"Miami", payment:prefillJob.payment||"Cash",
+        status:"Completed", customerName:prefillJob.customerName||"",
+        customerPhone:prefillJob.customerPhone||"",
+        revenue:String(prefillJob.revenue||""), cost:String(prefillJob.cost||""),
+        tireSize:prefillJob.tireSize||"", qty:String(prefillJob.qty||"1"),
+        miles:String(prefillJob.miles||prefillJob.mileage||""), note:"",
+        emergency:prefillJob.emergency||false, lateNight:prefillJob.lateNight||false,
+        highway:prefillJob.highway||false, weekend:prefillJob.weekend||false,
+      });
+      if(onClearPrefill) onClearPrefill();
+    }
+  },[prefillJob]);
+
   const [saved,setSaved]     = useState(false);
   const [expectedJobs,setExpectedJobs] = useState(4);
   const [invoiceJob,setInvoiceJob]     = useState(null); // show invoice after save
@@ -834,6 +866,9 @@ function AddJobScreen({onSave, onSaveAdd, settings}){
 
   const save = (andAdd) => {
     if(!form.revenue||isNaN(rev)){setError("Enter a revenue amount.");return;}
+    // Warn if below minimum price
+    const _minP = minimumPrice({service:form.service,jobCost:cost,miles,cpm:settings.costPerMile||0.65,dailyExpenseAmt:(calcMonthlyExpenses(settings.expenses)/30),expectedJobs:4});
+    if(rev < _minP && !window.confirm("⚠️ Revenue "+cur(rev)+" is below the minimum recommended price of "+cur(_minP)+".\nThis job may not cover your costs.\n\nSave anyway?")) return;
     const entry={
       id:Date.now(), date:form.date, service:form.service, area:form.area,
       payment:form.payment, status:form.status,
@@ -843,6 +878,14 @@ function AddJobScreen({onSave, onSaveAdd, settings}){
       emergency:form.emergency, lateNight:form.lateNight, highway:form.highway, weekend:form.weekend,
       mileage:miles
     };
+    // Save tire size to recents
+    if(entry.tireSize){
+      try{
+        const prev=JSON.parse(localStorage.getItem("wr-recent-sizes")||"[]");
+        const updated=[entry.tireSize,...prev.filter(s=>s!==entry.tireSize)].slice(0,8);
+        localStorage.setItem("wr-recent-sizes",JSON.stringify(updated));
+      }catch{}
+    }
     if(andAdd){
       onSaveAdd(entry); setForm(EMPTY_JOB());
       setSaved(true); setTimeout(()=>setSaved(false),2000);
@@ -881,12 +924,40 @@ function AddJobScreen({onSave, onSaveAdd, settings}){
         </div>
         <div className="field"><label className="field-label">Service Type</label><select className="field-input" value={form.service} onChange={e=>setF("service",e.target.value)}>{SERVICES.map(s=><option key={s}>{s}</option>)}</select></div>
         <div className="field-row">
-          <div className="field"><label className="field-label">Tire Size</label><input className="field-input" type="text" placeholder="225/55R17" value={form.tireSize} onChange={e=>setF("tireSize",e.target.value)}/></div>
+          <div className="field"><label className="field-label">Tire Size</label>
+              <input className="field-input" type="text" placeholder="225/55R17" value={form.tireSize} onChange={e=>setF("tireSize",e.target.value)}/>
+              <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                {(()=>{
+                  const recent = (() => { try{ const r=JSON.parse(localStorage.getItem("wr-recent-sizes")||"[]"); return r.slice(0,5); }catch{return [];} })();
+                  const defaults = ["225/55R17","235/60R18","245/45R18","215/65R16","265/65R17","205/55R16"];
+                  const chips = recent.length >= 3 ? recent : [...new Set([...recent,...defaults])].slice(0,6);
+                  return chips.map(sz=>(
+                    <button key={sz} type="button" onClick={()=>setF("tireSize",sz)} style={{background:form.tireSize===sz?"#111":"#f4f4f4",color:form.tireSize===sz?"#fff":"#555",border:"none",borderRadius:20,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"IBM Plex Sans,sans-serif",flexShrink:0}}>
+                      {sz}
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
           <div className="field"><label className="field-label">Qty</label><input className="field-input" type="number" min="1" placeholder="1" value={form.qty} onChange={e=>setF("qty",e.target.value)}/></div>
         </div>
         <div className="field-row">
           <div className="field"><label className="field-label">Area</label><select className="field-input" value={form.area} onChange={e=>setF("area",e.target.value)}>{AREAS.map(a=><option key={a}>{a}</option>)}</select></div>
-          <div className="field"><label className="field-label">Payment</label><select className="field-input" value={form.payment} onChange={e=>setF("payment",e.target.value)}>{PAYMENT.map(p=><option key={p}>{p}</option>)}</select></div>
+          <div className="field" style={{gridColumn:"1/-1"}}>
+            <label className="field-label">Payment Method</label>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,marginTop:2}}>
+              {PAYMENT.map(p=>{
+                const icons={"Cash":"💵","Card":"💳","Zelle":"🟣","Venmo":"💙","CashApp":"🟢","Check":"✍️"};
+                const active=form.payment===p;
+                return(
+                  <button key={p} type="button" onClick={()=>setF("payment",p)}
+                    style={{padding:"10px 4px",border:`1.5px solid ${active?"#111":"#e0e0e0"}`,borderRadius:10,background:active?"#111":"#fff",color:active?"#fff":"#555",fontSize:12,fontFamily:"IBM Plex Sans,sans-serif",fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                    <span style={{fontSize:16}}>{icons[p]||"💳"}</span>{p}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Job conditions — affect pricing */}
@@ -1263,7 +1334,7 @@ function ExpensesScreen({receipts, setReceipts, settings, fbEnabled}){
   );
 }
 
-function JobDetailModal({job, onClose, onDelete, onUpdate, settings}){
+function JobDetailModal({job, onClose, onDelete, onUpdate, settings, onRepeat}){
   if(!job) return null;
   const [editing, setEditing]         = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
@@ -1313,7 +1384,21 @@ function JobDetailModal({job, onClose, onDelete, onUpdate, settings}){
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
             <div><label className="field-label">Miles</label><input className="field-input" type="number" step="0.1" value={form.miles} onChange={e=>setF("miles",e.target.value)}/></div>
-            <div><label className="field-label">Tire Size</label><input className="field-input" type="text" placeholder="225/55R17" value={form.tireSize} onChange={e=>setF("tireSize",e.target.value)}/></div>
+            <div><label className="field-label">Tire Size</label>
+              <input className="field-input" type="text" placeholder="225/55R17" value={form.tireSize} onChange={e=>setF("tireSize",e.target.value)}/>
+              <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                {(()=>{
+                  const recent = (() => { try{ const r=JSON.parse(localStorage.getItem("wr-recent-sizes")||"[]"); return r.slice(0,5); }catch{return [];} })();
+                  const defaults = ["225/55R17","235/60R18","245/45R18","215/65R16","265/65R17","205/55R16"];
+                  const chips = recent.length >= 3 ? recent : [...new Set([...recent,...defaults])].slice(0,6);
+                  return chips.map(sz=>(
+                    <button key={sz} type="button" onClick={()=>setF("tireSize",sz)} style={{background:form.tireSize===sz?"#111":"#f4f4f4",color:form.tireSize===sz?"#fff":"#555",border:"none",borderRadius:20,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"IBM Plex Sans,sans-serif",flexShrink:0}}>
+                      {sz}
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
             <div><label className="field-label">Area</label><select className="field-input" value={form.area} onChange={e=>setF("area",e.target.value)}>{AREAS.map(a=><option key={a}>{a}</option>)}</select></div>
@@ -1403,12 +1488,13 @@ function JobDetailModal({job, onClose, onDelete, onUpdate, settings}){
 
         <button onClick={()=>setShowInvoice(true)} style={{width:"100%",background:"#111",color:"#fff",border:"none",borderRadius:12,padding:"13px",fontSize:14,fontFamily:"IBM Plex Sans,sans-serif",fontWeight:700,cursor:"pointer",marginBottom:10}}>🧾 View / Send Invoice</button>
         <button onClick={()=>{if(window.confirm("Delete this job?"))onDelete(job.id);}} style={{width:"100%",background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontFamily:"IBM Plex Sans,sans-serif",fontWeight:700,cursor:"pointer"}}>🗑 Delete Job</button>
+        {onRepeat&&<button onClick={()=>onRepeat(job)} style={{width:"100%",background:"#f0fdf4",color:"#16a34a",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"13px",fontSize:14,fontFamily:"IBM Plex Sans,sans-serif",fontWeight:700,cursor:"pointer",marginTop:8}}>🔁 Repeat This Job</button>}
       </div>
     </div>
   );
 }
 
-function HistoryScreen({jobs, onDelete, onUpdate, settings, receipts}){
+function HistoryScreen({jobs, onDelete, onUpdate, settings, receipts, onRepeat}){
   const [tab,setTab]           = useState("weeks"); // weeks | jobs
   const [filter,setFilter]     = useState("all");
   const [selectedJob,setSelectedJob] = useState(null);
@@ -1445,7 +1531,7 @@ function HistoryScreen({jobs, onDelete, onUpdate, settings, receipts}){
 
   return (
     <div className="screen">
-      {selectedJob&&<JobDetailModal job={selectedJob} onClose={()=>setSelectedJob(null)} onDelete={handleDelete} onUpdate={handleUpdate} settings={settings}/>}
+      {selectedJob&&<JobDetailModal job={selectedJob} onClose={()=>setSelectedJob(null)} onDelete={handleDelete} onUpdate={handleUpdate} settings={settings} onRepeat={onRepeat}/>}
 
       {/* Tab switcher */}
       <div style={{display:"flex",background:"#fff",borderBottom:"1px solid #f0f0f0",position:"sticky",top:0,zIndex:10}}>
@@ -2543,6 +2629,7 @@ function App(){
   const [settings,  setSettings]  = useState(loadSettings);
   const [loaded,    setLoaded]    = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [prefillJob, setPrefillJob] = useState(null);
   const [fbEnabled, setFbEnabled] = useState(false);
   const [syncStatus,setSyncStatus]= useState("offline");
   const retryRef = useRef(null);
@@ -2675,8 +2762,8 @@ function App(){
 
       {/* Screens */}
       {tab==="dashboard" && <DashboardScreen jobs={jobs} settings={settings} setTab={setTab}/>}
-      {tab==="add"       && <AddJobScreen onSave={saveJob} onSaveAdd={saveJobAndAdd} settings={settings}/>}
-      {tab==="history"   && <HistoryScreen jobs={jobs} onDelete={deleteJob} onUpdate={updateJob} settings={settings} receipts={receipts}/>}
+      {tab==="add"       && <AddJobScreen onSave={saveJob} onSaveAdd={saveJobAndAdd} settings={settings} prefillJob={prefillJob} onClearPrefill={()=>setPrefillJob(null)}/>}
+      {tab==="history"   && <HistoryScreen jobs={jobs} onDelete={deleteJob} onUpdate={updateJob} settings={settings} receipts={receipts} onRepeat={(job)=>{ setPrefillJob(job); setTab("add"); }}/>}
       {tab==="payouts"   && <PayoutsScreen jobs={jobs} settings={settings} receipts={receipts} setReceipts={setReceipts} fbEnabled={fbEnabled}/>}
       {tab==="inventory" && <InventoryScreen tires={tires} setTires={setTires} fbEnabled={fbEnabled} tireSales={tireSales} setTireSales={setTireSales}/>}
       {tab==="expenses"  && <ExpensesScreen receipts={receipts} setReceipts={setReceipts} settings={settings} fbEnabled={fbEnabled}/>}
