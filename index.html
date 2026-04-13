@@ -1,276 +1,194 @@
-import { useState, useMemo } from "react";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Wheel Rush</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:#0A0A0A;font-family:'DM Sans',sans-serif;color:#F5F5F5;}
+  input,select,button{font-family:'DM Sans',sans-serif;}
+  ::-webkit-scrollbar{width:0;}
+  select option{background:#161616;color:#F5F5F5;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
 
-// ─── DESIGN TOKENS ───────────────────────────────────────────────────────────
 const C = {
-  bg: "#0A0A0A",
-  surface: "#111111",
-  card: "#161616",
-  border: "#222222",
-  orange: "#FF6B00",
-  orangeDim: "#FF6B0022",
-  orangeHover: "#FF7A1A",
-  white: "#FFFFFF",
-  muted: "#888888",
-  subtle: "#444444",
-  success: "#22C55E",
-  successDim: "#22C55E22",
-  warn: "#EAB308",
-  warnDim: "#EAB30822",
-  danger: "#EF4444",
-  dangerDim: "#EF444422",
-  text: "#F5F5F5",
+  bg:"#0A0A0A", surface:"#111111", card:"#161616", border:"#222222",
+  orange:"#FF6B00", orangeDim:"#FF6B0022", white:"#FFFFFF",
+  muted:"#888888", subtle:"#444444",
+  success:"#22C55E", successDim:"#22C55E22",
+  warn:"#EAB308", warnDim:"#EAB30822",
+  danger:"#EF4444", dangerDim:"#EF444422", text:"#F5F5F5",
 };
 
-const styles = {
-  app: {
-    background: C.bg,
-    minHeight: "100vh",
-    maxWidth: 430,
-    margin: "0 auto",
-    fontFamily: "'DM Sans', sans-serif",
-    color: C.text,
-    position: "relative",
-    display: "flex",
-    flexDirection: "column",
-  },
-  scrollArea: {
-    flex: 1,
-    overflowY: "auto",
-    paddingBottom: 80,
-  },
-};
-
-// ─── SEED DATA ────────────────────────────────────────────────────────────────
-const INITIAL_JOBS = [
-  { id: 1, date: "2025-07-14", service: "Flat Repair", city: "Miami Gardens", revenue: 85, cost: 12, source: "Google", payment: "Card", tireSize: "225/65R17", notes: "" },
-  { id: 2, date: "2025-07-14", service: "Tire Replacement", city: "Miramar", revenue: 320, cost: 190, source: "Yelp", payment: "Cash", tireSize: "235/55R18", notes: "2 tires" },
-  { id: 3, date: "2025-07-13", service: "Flat Repair", city: "Hialeah", revenue: 85, cost: 12, source: "Repeat", payment: "Card", tireSize: "205/55R16", notes: "" },
-  { id: 4, date: "2025-07-13", service: "Installation", city: "Doral", revenue: 160, cost: 40, source: "Google", payment: "Zelle", tireSize: "245/45R19", notes: "" },
-  { id: 5, date: "2025-07-12", service: "Tire Replacement", city: "Pembroke Pines", revenue: 480, cost: 280, source: "Google", payment: "Card", tireSize: "215/60R16", notes: "4 tires" },
-  { id: 6, date: "2025-07-11", service: "Flat Repair", city: "Fort Lauderdale", revenue: 85, cost: 12, source: "Yelp", payment: "Cash", tireSize: "225/50R18", notes: "" },
-  { id: 7, date: "2025-07-10", service: "Lug Nut Removal", city: "Hollywood", revenue: 200, cost: 55, source: "Google", payment: "Card", tireSize: "265/70R17", notes: "" },
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const INIT_JOBS = [
+  {id:1,date:"2025-07-14",service:"Flat Repair",city:"Miami Gardens",revenue:85,cost:12,source:"Google",payment:"Card",tireSize:"225/65R17",notes:""},
+  {id:2,date:"2025-07-14",service:"Tire Replacement",city:"Miramar",revenue:320,cost:190,source:"Yelp",payment:"Cash",tireSize:"235/55R18",notes:"2 tires"},
+  {id:3,date:"2025-07-13",service:"Flat Repair",city:"Hialeah",revenue:85,cost:12,source:"Repeat",payment:"Card",tireSize:"205/55R16",notes:""},
+  {id:4,date:"2025-07-13",service:"Installation",city:"Doral",revenue:160,cost:40,source:"Google",payment:"Zelle",tireSize:"245/45R19",notes:""},
+  {id:5,date:"2025-07-12",service:"Tire Replacement",city:"Pembroke Pines",revenue:480,cost:280,source:"Google",payment:"Card",tireSize:"215/60R16",notes:"4 tires"},
+  {id:6,date:"2025-07-11",service:"Flat Repair",city:"Fort Lauderdale",revenue:85,cost:12,source:"Yelp",payment:"Cash",tireSize:"225/50R18",notes:""},
+  {id:7,date:"2025-07-10",service:"Lug Nut Removal",city:"Hollywood",revenue:200,cost:55,source:"Google",payment:"Card",tireSize:"265/70R17",notes:""},
 ];
-
-const INITIAL_EXPENSES = [
-  { id: 1, date: "2025-07-13", category: "Fuel", amount: 68, note: "Full tank" },
-  { id: 2, date: "2025-07-12", category: "Supplies", amount: 34, note: "Valve stems, patches" },
-  { id: 3, date: "2025-07-11", category: "Tools", amount: 120, note: "New torque wrench" },
+const INIT_EXPENSES = [
+  {id:1,date:"2025-07-13",category:"Fuel",amount:68,note:"Full tank"},
+  {id:2,date:"2025-07-12",category:"Supplies",amount:34,note:"Valve stems, patches"},
+  {id:3,date:"2025-07-11",category:"Tools",amount:120,note:"New torque wrench"},
 ];
-
-const INITIAL_STOCK = [
-  { id: 1, size: "225/65R17", brand: "Hankook", qty: 2, cost: 95, min: 4 },
-  { id: 2, size: "235/55R18", brand: "Michelin", qty: 0, cost: 140, min: 2 },
-  { id: 3, size: "205/55R16", brand: "Cooper", qty: 6, cost: 78, min: 4 },
-  { id: 4, size: "245/45R19", brand: "Pirelli", qty: 1, cost: 165, min: 2 },
-  { id: 5, size: "215/60R16", brand: "BFGoodrich", qty: 8, cost: 88, min: 4 },
-  { id: 6, size: "225/50R18", brand: "Goodyear", qty: 3, cost: 105, min: 4 },
-  { id: 7, size: "265/70R17", brand: "Falken", qty: 5, cost: 112, min: 4 },
-  { id: 8, size: "255/40R20", brand: "Bridgestone", qty: 0, cost: 180, min: 2 },
+const INIT_STOCK = [
+  {id:1,size:"225/65R17",brand:"Hankook",qty:2,cost:95,min:4},
+  {id:2,size:"235/55R18",brand:"Michelin",qty:0,cost:140,min:2},
+  {id:3,size:"205/55R16",brand:"Cooper",qty:6,cost:78,min:4},
+  {id:4,size:"245/45R19",brand:"Pirelli",qty:1,cost:165,min:2},
+  {id:5,size:"215/60R16",brand:"BFGoodrich",qty:8,cost:88,min:4},
+  {id:6,size:"225/50R18",brand:"Goodyear",qty:3,cost:105,min:4},
+  {id:7,size:"265/70R17",brand:"Falken",qty:5,cost:112,min:4},
+  {id:8,size:"255/40R20",brand:"Bridgestone",qty:0,cost:180,min:2},
 ];
-
-const INITIAL_SETTINGS = {
-  weeklyGoal: 2500,
-  taxRate: 25,
-  ownerSplit: 100,
-  fixedExpenses: [
-    { id: 1, name: "Vehicle Insurance", monthly: 280 },
-    { id: 2, name: "Phone & Data Plan", monthly: 85 },
-    { id: 3, name: "Software & Apps", monthly: 49 },
-    { id: 4, name: "Storage Unit", monthly: 120 },
+const INIT_SETTINGS = {
+  weeklyGoal:2500, taxRate:25, ownerSplit:100,
+  fixedExpenses:[
+    {id:1,name:"Vehicle Insurance",monthly:280},
+    {id:2,name:"Phone & Data Plan",monthly:85},
+    {id:3,name:"Software & Apps",monthly:49},
+    {id:4,name:"Storage Unit",monthly:120},
   ],
-  repairTarget: 65,
-  replacementTarget: 90,
-  googleReviewLink: "https://g.page/r/wheelrush",
+  repairTarget:65, replacementTarget:90,
+  googleReviewLink:"https://g.page/r/wheelrush",
 };
-
-const SERVICES = ["Flat Repair", "Tire Replacement", "Installation", "Lug Nut Removal", "Rotation", "TPMS Service"];
+const SERVICES = ["Flat Repair","Tire Replacement","Installation","Lug Nut Removal","Rotation","TPMS Service"];
 const CITIES = [
-  // Miami-Dade County
-  "Miami", "Miami Gardens", "Hialeah", "Homestead", "Miami Beach", "North Miami",
-  "North Miami Beach", "Aventura", "Doral", "Coral Gables", "Kendall", "Cutler Bay",
-  "Palmetto Bay", "Pinecrest", "South Miami", "Sweetwater", "Opa-locka", "Miami Lakes",
-  // Broward County
-  "Fort Lauderdale", "Hollywood", "Pembroke Pines", "Miramar", "Coral Springs",
-  "Pompano Beach", "Davie", "Sunrise", "Plantation", "Lauderhill", "Weston",
-  "Deerfield Beach", "Margate", "Coconut Creek", "Tamarac", "North Lauderdale",
-  "Hallandale Beach", "Oakland Park", "Wilton Manors", "Boca Raton",
+  "Miami","Miami Gardens","Hialeah","Homestead","Miami Beach","North Miami",
+  "North Miami Beach","Aventura","Doral","Coral Gables","Kendall","Cutler Bay",
+  "Palmetto Bay","Pinecrest","South Miami","Sweetwater","Opa-locka","Miami Lakes",
+  "Fort Lauderdale","Hollywood","Pembroke Pines","Miramar","Coral Springs",
+  "Pompano Beach","Davie","Sunrise","Plantation","Lauderhill","Weston",
+  "Deerfield Beach","Margate","Coconut Creek","Tamarac","North Lauderdale",
+  "Hallandale Beach","Oakland Park","Wilton Manors","Boca Raton",
 ];
-const SOURCES = ["Google", "Yelp", "Repeat", "Referral", "Instagram", "Walk-in"];
-const PAYMENTS = ["Card", "Cash", "Zelle", "Venmo", "Apple Pay"];
-const EXP_CATEGORIES = ["Fuel", "Supplies", "Tools", "Tolls", "Maintenance", "Marketing", "Other"];
+const SOURCES = ["Google","Yelp","Repeat","Referral","Instagram","Walk-in"];
+const PAYMENTS = ["Card","Cash","Zelle","Venmo","Apple Pay"];
+const EXP_CATS = ["Fuel","Supplies","Tools","Tolls","Maintenance","Marketing","Other"];
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-const fmt = (n) => `$${Math.round(n).toLocaleString()}`;
-const pct = (n) => `${Math.round(n)}%`;
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const fmt = n => `$${Math.round(n).toLocaleString()}`;
+const pct = n => `${Math.round(n)}%`;
+const today = () => new Date().toISOString().slice(0,10);
 
 function getWeekRange() {
-  const now = new Date("2025-07-14");
+  const now = new Date();
   const day = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((day + 6) % 7));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { start: monday, end: sunday };
+  const mon = new Date(now); mon.setDate(now.getDate()-((day+6)%7)); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  return {start:mon,end:sun};
 }
-
-function isThisWeek(dateStr) {
-  const { start, end } = getWeekRange();
-  const d = new Date(dateStr);
-  return d >= start && d <= end;
+function isThisWeek(ds) {
+  const {start,end}=getWeekRange(); const d=new Date(ds+"T12:00:00");
+  return d>=start && d<=end;
 }
-
 function groupByWeek(jobs) {
-  const groups = {};
-  jobs.forEach((j) => {
-    const d = new Date(j.date);
-    const day = d.getDay();
-    const mon = new Date(d);
-    mon.setDate(d.getDate() - ((day + 6) % 7));
-    const key = mon.toISOString().slice(0, 10);
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(j);
+  const g={};
+  jobs.forEach(j=>{
+    const d=new Date(j.date+"T12:00:00"); const day=d.getDay();
+    const mon=new Date(d); mon.setDate(d.getDate()-((day+6)%7));
+    const key=mon.toISOString().slice(0,10);
+    if(!g[key]) g[key]=[];
+    g[key].push(j);
   });
-  return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  return Object.entries(g).sort((a,b)=>b[0].localeCompare(a[0]));
 }
-
 function calcFixed(settings) {
-  return settings.fixedExpenses.reduce((s, e) => s + e.monthly, 0) / 4.33;
+  return settings.fixedExpenses.reduce((s,e)=>s+e.monthly,0)/4.33;
+}
+function weekLabel(weekStart) {
+  const d=new Date(weekStart+"T12:00:00");
+  const end=new Date(d); end.setDate(d.getDate()+6);
+  return `${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${end.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
 }
 
-// ─── ICON COMPONENTS ─────────────────────────────────────────────────────────
-const Icon = ({ name, size = 20, color = "currentColor" }) => {
-  const icons = {
-    home: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
-    history: "M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
-    dollar: "M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
-    package: "M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4A2 2 0 0 1 2 16.76V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z M2.32 6.16L12 11l9.68-4.84 M12 22.76V11",
-    settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
-    plus: "M12 5v14M5 12h14",
-    minus: "M5 12h14",
-    trash: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6",
-    edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
-    alert: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4M12 17h.01",
-    trendUp: "M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6",
-    check: "M20 6L9 17l-5-5",
-    chevDown: "M6 9l6 6 6-6",
-    x: "M18 6L6 18M6 6l12 12",
-    search: "M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0",
-    filter: "M22 3H2l8 9.46V19l4 2v-8.54L22 3",
-    info: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8h.01 M12 12v4",
-    star: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
-  };
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      {icons[name]?.split("M").filter(Boolean).map((d, i) => (
-        <path key={i} d={"M" + d} />
-      ))}
-    </svg>
-  );
+// ── ICONS ─────────────────────────────────────────────────────────────────────
+const ICONS = {
+  home:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z||M9 22V12h6v10',
+  history:'M12 8v4l3 3||M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+  dollar:'M12 1v22||M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
+  package:'M12.89 1.45l8 4A2 2 0 0 1 22 7.24v9.53a2 2 0 0 1-1.11 1.79l-8 4a2 2 0 0 1-1.79 0l-8-4A2 2 0 0 1 2 16.76V7.24a2 2 0 0 1 1.11-1.79l8-4a2 2 0 0 1 1.78 0z||M2.32 6.16L12 11l9.68-4.84||M12 22.76V11',
+  settings:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z||M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
+  plus:'M12 5v14||M5 12h14',
+  minus:'M5 12h14',
+  trash:'M3 6h18||M8 6V4h8v2||M19 6l-1 14H6L5 6',
+  alert:'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z||M12 9v4||M12 17h.01',
+  trendUp:'M23 6l-9.5 9.5-5-5L1 18||M17 6h6v6',
+  x:'M18 6L6 18||M6 6l12 12',
+  search:'M21 21l-6-6||M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14z',
+  info:'M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z||M12 8h.01||M12 12v4',
+  star:'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
 };
-
-// ─── UI PRIMITIVES ────────────────────────────────────────────────────────────
-const Card = ({ children, style = {}, onClick }) => (
-  <div onClick={onClick} style={{
-    background: C.card, border: `1px solid ${C.border}`, borderRadius: 16,
-    padding: "16px", marginBottom: 12, ...style,
-    cursor: onClick ? "pointer" : "default",
-  }}>{children}</div>
+const Icon = ({name,size=20,color="currentColor"}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    {(ICONS[name]||'').split('||').map((d,i)=><path key={i} d={d}/>)}
+  </svg>
 );
 
-const Badge = ({ label, color = C.orange, bg }) => (
-  <span style={{
-    fontSize: 11, fontWeight: 700, letterSpacing: "0.05em",
-    color, background: bg || color + "22",
-    padding: "3px 8px", borderRadius: 20, display: "inline-block",
-  }}>{label}</span>
-);
-
-const Stat = ({ label, value, sub, color = C.text, small }) => (
-  <div>
-    <div style={{ fontSize: small ? 20 : 26, fontWeight: 800, color, letterSpacing: "-0.02em" }}>{value}</div>
-    <div style={{ fontSize: 11, color: C.muted, fontWeight: 500, marginTop: 2 }}>{label}</div>
-    {sub && <div style={{ fontSize: 11, color: C.subtle, marginTop: 1 }}>{sub}</div>}
-  </div>
-);
-
-const Divider = () => <div style={{ height: 1, background: C.border, margin: "12px 0" }} />;
-
-const SectionLabel = ({ children }) => (
-  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: C.muted, textTransform: "uppercase", marginBottom: 10, marginTop: 6 }}>
+// ── UI PRIMITIVES ─────────────────────────────────────────────────────────────
+const Card = ({children,style={},onClick}) => (
+  <div onClick={onClick} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:16,marginBottom:12,cursor:onClick?"pointer":"default",...style}}>
     {children}
   </div>
 );
-
-const Input = ({ label, value, onChange, type = "text", placeholder, style = {} }) => (
-  <div style={{ marginBottom: 12 }}>
-    {label && <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>{label}</div>}
-    <input
-      type={type} value={value} onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      style={{
-        width: "100%", background: C.surface, border: `1px solid ${C.border}`,
-        borderRadius: 10, padding: "10px 12px", color: C.text, fontSize: 14,
-        outline: "none", boxSizing: "border-box", ...style,
-      }}
-    />
+const Badge = ({label,color=C.orange,bg}) => (
+  <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.05em",color,background:bg||color+"22",padding:"3px 8px",borderRadius:20,display:"inline-block"}}>{label}</span>
+);
+const Divider = () => <div style={{height:1,background:C.border,margin:"12px 0"}}/>;
+const SectionLabel = ({children}) => (
+  <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",color:C.muted,textTransform:"uppercase",marginBottom:10,marginTop:6}}>{children}</div>
+);
+const ProgressBar = ({value,max,color=C.orange}) => {
+  const p=Math.min((value/max)*100,100);
+  return <div style={{height:6,background:C.border,borderRadius:99,overflow:"hidden"}}><div style={{height:"100%",width:`${p}%`,background:color,borderRadius:99}}/></div>;
+};
+const FInput = ({label,value,onChange,type="text",placeholder,style={}}) => (
+  <div style={{marginBottom:12}}>
+    {label&&<div style={{fontSize:12,color:C.muted,fontWeight:600,marginBottom:6}}>{label}</div>}
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+      style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",color:C.text,fontSize:14,outline:"none",boxSizing:"border-box",...style}}/>
   </div>
 );
-
-const Select = ({ label, value, onChange, options }) => (
-  <div style={{ marginBottom: 12 }}>
-    {label && <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>{label}</div>}
-    <select value={value} onChange={(e) => onChange(e.target.value)} style={{
-      width: "100%", background: C.surface, border: `1px solid ${C.border}`,
-      borderRadius: 10, padding: "10px 12px", color: C.text, fontSize: 14, outline: "none",
-    }}>
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+const FSelect = ({label,value,onChange,options}) => (
+  <div style={{marginBottom:12}}>
+    {label&&<div style={{fontSize:12,color:C.muted,fontWeight:600,marginBottom:6}}>{label}</div>}
+    <select value={value} onChange={e=>onChange(e.target.value)}
+      style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 12px",color:C.text,fontSize:14,outline:"none",appearance:"none"}}>
+      {options.map(o=><option key={o} value={o}>{o}</option>)}
     </select>
   </div>
 );
-
-const Btn = ({ label, onClick, variant = "primary", icon, style = {}, disabled }) => {
-  const base = {
-    padding: "12px 20px", borderRadius: 12, fontWeight: 700, fontSize: 14,
-    border: "none", cursor: disabled ? "not-allowed" : "pointer", display: "flex",
-    alignItems: "center", gap: 8, justifyContent: "center", opacity: disabled ? 0.4 : 1, ...style,
-  };
-  const variants = {
-    primary: { background: C.orange, color: "#fff" },
-    secondary: { background: C.surface, color: C.text, border: `1px solid ${C.border}` },
-    ghost: { background: "transparent", color: C.muted },
-    danger: { background: C.dangerDim, color: C.danger, border: `1px solid ${C.danger}33` },
-  };
+const Btn = ({label,onClick,variant="primary",icon,style={},disabled}) => {
+  const v={primary:{background:C.orange,color:"#fff",border:"none"},secondary:{background:C.surface,color:C.text,border:`1px solid ${C.border}`},danger:{background:C.dangerDim,color:C.danger,border:`1px solid ${C.danger}33`}};
   return (
-    <button onClick={onClick} disabled={disabled} style={{ ...base, ...variants[variant] }}>
-      {icon && <Icon name={icon} size={16} color={variants[variant].color} />}
-      {label}
+    <button onClick={onClick} disabled={disabled} style={{padding:"12px 20px",borderRadius:12,fontWeight:700,fontSize:14,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8,justifyContent:"center",opacity:disabled?0.4:1,...v[variant],...style}}>
+      {icon&&<Icon name={icon} size={16} color={v[variant].color}/>}{label}
     </button>
   );
 };
 
-const ProgressBar = ({ value, max, color = C.orange }) => {
-  const pctVal = Math.min((value / max) * 100, 100);
-  return (
-    <div style={{ height: 6, background: C.border, borderRadius: 99, overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${pctVal}%`, background: color, borderRadius: 99, transition: "width 0.6s ease" }} />
-    </div>
-  );
-};
-
-// ─── MODAL ────────────────────────────────────────────────────────────────────
-const Modal = ({ title, onClose, children }) => (
-  <div style={{
-    position: "fixed", inset: 0, background: "#000000CC", zIndex: 1000,
-    display: "flex", alignItems: "flex-end", justifyContent: "center",
-  }}>
-    <div style={{
-      background: C.surface, borderRadius: "20px 20px 0 0", width: "100%",
-      maxWidth: 430, maxHeight: "90vh", overflowY: "auto", padding: "20px 16px 32px",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ fontSize: 17, fontWeight: 800 }}>{title}</div>
-        <button onClick={onClose} style={{ background: C.card, border: "none", borderRadius: 20, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Icon name="x" size={16} color={C.muted} />
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+const Modal = ({title,onClose,children}) => (
+  <div style={{position:"fixed",inset:0,background:"#000000CC",zIndex:1000,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{background:C.surface,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:430,maxHeight:"90vh",overflowY:"auto",padding:"20px 16px 40px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div style={{fontSize:17,fontWeight:800}}>{title}</div>
+        <button onClick={onClose} style={{background:C.card,border:"none",borderRadius:20,width:32,height:32,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Icon name="x" size={16} color={C.muted}/>
         </button>
       </div>
       {children}
@@ -278,409 +196,242 @@ const Modal = ({ title, onClose, children }) => (
   </div>
 );
 
-// ─── FLOATING ACTION BUTTON ───────────────────────────────────────────────────
-const FAB = ({ onClick }) => (
-  <button onClick={onClick} style={{
-    position: "fixed",
-    bottom: 76,
-    right: "calc(50% - 215px + 16px)",
-    width: 52, height: 52,
-    borderRadius: "50%",
-    background: `linear-gradient(135deg, ${C.orange}, #CC4400)`,
-    border: "none",
-    cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    boxShadow: `0 4px 20px ${C.orange}66`,
-    zIndex: 200,
-  }}>
-    <Icon name="plus" size={22} color="#fff" />
-  </button>
-);
-const NAV = [
-  { id: "dashboard", label: "Dashboard", icon: "home" },
-  { id: "history", label: "History", icon: "history" },
-  { id: "payouts", label: "Payouts", icon: "dollar" },
-  { id: "stock", label: "Stock", icon: "package" },
-  { id: "settings", label: "Settings", icon: "settings" },
-];
-
-const BottomNav = ({ active, setActive }) => (
-  <div style={{
-    position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)",
-    width: "100%", maxWidth: 430, background: C.surface,
-    borderTop: `1px solid ${C.border}`, display: "flex",
-    paddingBottom: 4, zIndex: 100,
-  }}>
-    {NAV.map((n) => {
-      const on = active === n.id;
-      return (
-        <button key={n.id} onClick={() => setActive(n.id)} style={{
-          flex: 1, padding: "10px 0 6px", background: "transparent", border: "none",
-          cursor: "pointer", display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 4,
-        }}>
-          <Icon name={n.icon} size={20} color={on ? C.orange : C.subtle} />
-          <span style={{ fontSize: 10, fontWeight: on ? 700 : 500, color: on ? C.orange : C.subtle, letterSpacing: "0.02em" }}>
-            {n.label}
-          </span>
-        </button>
-      );
-    })}
-  </div>
-);
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// DASHBOARD
-// ═══════════════════════════════════════════════════════════════════════════════
-const Dashboard = ({ jobs, settings, expenses }) => {
-  const weekJobs = jobs.filter((j) => isThisWeek(j.date));
-  const revenue = weekJobs.reduce((s, j) => s + j.revenue, 0);
-  const directCosts = weekJobs.reduce((s, j) => s + j.cost, 0);
-  const grossProfit = revenue - directCosts;
-  const fixedWeekly = calcFixed(settings);
-  const netProfit = grossProfit - fixedWeekly;
-  const avgGross = weekJobs.length ? grossProfit / weekJobs.length : 0;
-  const jobsNeeded = avgGross > 0 ? Math.ceil((settings.weeklyGoal - netProfit) / avgGross) : 0;
-  const goalPct = Math.min((netProfit / settings.weeklyGoal) * 100, 100);
-  const taxReserve = netProfit * (settings.taxRate / 100);
-  const ownerPayout = (netProfit - taxReserve) * (settings.ownerSplit / 100);
-
-  // service breakdown
-  const byService = {};
-  weekJobs.forEach((j) => {
-    if (!byService[j.service]) byService[j.service] = { rev: 0, cost: 0, count: 0 };
-    byService[j.service].rev += j.revenue;
-    byService[j.service].cost += j.cost;
-    byService[j.service].count++;
-  });
-  const bestService = Object.entries(byService).sort((a, b) => (b[1].rev - b[1].cost) - (a[1].rev - a[1].cost))[0];
-
-  const byCity = {};
-  weekJobs.forEach((j) => {
-    if (!byCity[j.city]) byCity[j.city] = 0;
-    byCity[j.city] += j.revenue - j.cost;
-  });
-  const bestCity = Object.entries(byCity).sort((a, b) => b[1] - a[1])[0];
-
-  const belowTarget = weekJobs.some((j) => {
-    const gp = j.revenue - j.cost;
-    if (j.service === "Flat Repair") return gp < settings.repairTarget;
-    if (j.service === "Tire Replacement") return gp < settings.replacementTarget;
-    return false;
-  });
-
-  const netColor = netProfit >= 0 ? C.success : C.danger;
-
+// ── JOB MODAL ─────────────────────────────────────────────────────────────────
+const JobModal = ({job,onClose,onSave,onDelete,settings}) => {
+  const isEdit = !!(job&&job.id);
+  const [form,setForm] = useState(job&&job.id ? {...job,revenue:String(job.revenue),cost:String(job.cost)} : {date:today(),service:"Flat Repair",city:"Miami Gardens",revenue:"",cost:"",source:"Google",payment:"Card",tireSize:"",notes:""});
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const gross = (parseFloat(form.revenue)||0)-(parseFloat(form.cost)||0);
+  const target = form.service==="Flat Repair"?settings.repairTarget:settings.replacementTarget;
+  const atTarget = gross>0&&gross>=target;
+  const belowTarget = gross>0&&gross<target;
   return (
-    <div style={{ padding: "16px 16px 0" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 14,
-            background: `linear-gradient(135deg, ${C.orange}, #CC4400)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: `0 4px 16px ${C.orange}44`,
-          }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
-              <circle cx="12" cy="12" r="3" fill="white"/>
-              <line x1="12" y1="2" x2="12" y2="6" stroke="white" strokeWidth="2"/>
-              <line x1="12" y1="18" x2="12" y2="22" stroke="white" strokeWidth="2"/>
-              <line x1="2" y1="12" x2="6" y2="12" stroke="white" strokeWidth="2"/>
-              <line x1="18" y1="12" x2="22" y2="12" stroke="white" strokeWidth="2"/>
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-              Wheel <span style={{ color: C.orange }}>Rush</span>
-            </div>
-            <div style={{ fontSize: 11, color: C.muted }}>Mobile Tire Repair</div>
-          </div>
-        </div>
-        <div style={{ fontSize: 11, color: C.muted, textAlign: "right" }}>
-          <div style={{ fontWeight: 700, color: C.text }}>Jul 14–20</div>
-          <div>This Week</div>
-        </div>
+    <Modal title={isEdit?"Edit Job":"Log a Job"} onClose={onClose}>
+      <FInput label="Date" type="date" value={form.date} onChange={v=>set("date",v)}/>
+      <FSelect label="Service Type" value={form.service} onChange={v=>set("service",v)} options={SERVICES}/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <FInput label="Revenue ($)" type="number" value={form.revenue} onChange={v=>set("revenue",v)} placeholder="0"/>
+        <FInput label="Direct Costs ($)" type="number" value={form.cost} onChange={v=>set("cost",v)} placeholder="0"/>
       </div>
-
-      {/* A — HERO: Net Profit */}
-      <div style={{
-        background: `linear-gradient(135deg, ${C.card} 0%, #1A1200 100%)`,
-        border: `1px solid ${C.border}`, borderRadius: 20, padding: "20px", marginBottom: 12,
-        position: "relative", overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: C.orange + "08" }} />
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", color: C.muted, textTransform: "uppercase", marginBottom: 8 }}>Net Profit This Week</div>
-        <div style={{ fontSize: 48, fontWeight: 900, color: netColor, letterSpacing: "-0.03em", lineHeight: 1 }}>{fmt(netProfit)}</div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>After direct costs and fixed expenses</div>
-        <div style={{ marginTop: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: C.muted }}>Weekly Goal Progress</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: goalPct >= 100 ? C.success : C.orange }}>{pct(goalPct)}</span>
-          </div>
-          <ProgressBar value={netProfit} max={settings.weeklyGoal} color={goalPct >= 100 ? C.success : C.orange} />
-          <div style={{ fontSize: 11, color: C.subtle, marginTop: 6 }}>Goal: {fmt(settings.weeklyGoal)} · {weekJobs.length} jobs this week</div>
+      {(form.revenue||form.cost)?<div style={{background:atTarget?C.successDim:belowTarget?C.warnDim:C.card,border:`1px solid ${atTarget?C.success+"44":belowTarget?C.warn+"44":C.border}`,borderRadius:12,padding:12,marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><div style={{fontSize:11,color:C.muted,fontWeight:600}}>Gross Profit Preview</div><div style={{fontSize:22,fontWeight:900,color:atTarget?C.success:belowTarget?C.warn:C.text}}>{fmt(gross)}</div></div>
+          <div style={{fontSize:12,color:atTarget?C.success:C.warn,fontWeight:600,textAlign:"right",maxWidth:140}}>{atTarget?"✓ Meets profit target":belowTarget?`⚠ Below ${fmt(target)} target`:""}</div>
         </div>
+      </div>:null}
+      <FSelect label="City / Area" value={form.city} onChange={v=>set("city",v)} options={CITIES}/>
+      <FInput label="Tire Size" value={form.tireSize} onChange={v=>set("tireSize",v)} placeholder="e.g. 225/65R17"/>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <FSelect label="Lead Source" value={form.source} onChange={v=>set("source",v)} options={SOURCES}/>
+        <FSelect label="Payment" value={form.payment} onChange={v=>set("payment",v)} options={PAYMENTS}/>
       </div>
-
-      {/* B — BREAKDOWN */}
-      <SectionLabel>Breakdown</SectionLabel>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-        {[
-          { label: "Revenue", value: fmt(revenue), color: C.text },
-          { label: "Gross Profit", value: fmt(grossProfit), color: C.orange },
-          { label: "Direct Costs", value: fmt(directCosts), color: C.muted },
-          { label: "Weekly Fixed Expenses", value: fmt(fixedWeekly), color: C.muted },
-        ].map((s) => (
-          <div key={s.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px" }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* C — INSIGHTS */}
-      <SectionLabel>Insights</SectionLabel>
-
-      <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <Stat label="Avg Gross Profit per Job" value={fmt(avgGross)} />
-          {jobsNeeded > 0
-            ? <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: C.orange }}>{jobsNeeded}</div>
-                <div style={{ fontSize: 11, color: C.muted }}>Jobs to Hit Goal</div>
-              </div>
-            : <Badge label="Goal Reached" color={C.success} />
-          }
-        </div>
-      </Card>
-
-      {bestService && (
-        <Card style={{ borderColor: C.orange + "33" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: C.orangeDim, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="star" size={16} color={C.orange} />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Most Profitable Service</div>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>{bestService[0]}</div>
-              <div style={{ fontSize: 11, color: C.muted }}>{fmt(bestService[1].rev - bestService[1].cost)} gross · {bestService[1].count} jobs</div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {bestCity && (
-        <Card>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "#22C55E11", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon name="trendUp" size={16} color={C.success} />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: C.muted, fontWeight: 600 }}>Best Performing Area</div>
-              <div style={{ fontSize: 15, fontWeight: 800 }}>{bestCity[0]}</div>
-              <div style={{ fontSize: 11, color: C.muted }}>{fmt(bestCity[1])} gross profit this week</div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {belowTarget && (
-        <Card style={{ borderColor: C.warn + "55", background: C.warnDim }}>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Icon name="alert" size={18} color={C.warn} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.warn }}>Margin Warning</div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Some jobs this week came in below your profit targets. Consider reviewing your pricing.</div>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* D — PAYOUT PROJECTION */}
-      <SectionLabel>Projected Friday Payout</SectionLabel>
-      <Card style={{ borderColor: C.orange + "44" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>Payout Projection</div>
-          <Badge label="Friday" color={C.orange} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: C.muted }}>Owner Take-Home ({settings.ownerSplit}%)</span>
-          <span style={{ fontSize: 15, fontWeight: 800, color: C.orange }}>{fmt(ownerPayout)}</span>
-        </div>
-        <Divider />
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 11, color: C.muted }}>Set Aside for Taxes</div>
-            <div style={{ fontSize: 12, color: C.subtle }}>Based on {settings.taxRate}% reserve</div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: C.warn }}>{fmt(taxReserve)}</div>
-          </div>
-        </div>
-      </Card>
-
-      <div style={{ height: 8 }} />
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// JOB LOG MODAL
-// ═══════════════════════════════════════════════════════════════════════════════
-const JobModal = ({ job, onClose, onSave, onDelete, settings }) => {
-  const isEdit = !!job?.id;
-  const [form, setForm] = useState(job ? {
-    ...job,
-    revenue: String(job.revenue ?? ""),
-    cost: String(job.cost ?? ""),
-  } : {
-    date: "2025-07-14", service: "Flat Repair", city: "Phoenix",
-    revenue: "", cost: "", source: "Google", payment: "Card", tireSize: "", notes: "",
-  });
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const gross = (parseFloat(form.revenue) || 0) - (parseFloat(form.cost) || 0);
-  const target = form.service === "Flat Repair" ? settings.repairTarget : settings.replacementTarget;
-  const belowTarget = gross > 0 && gross < target;
-  const atTarget = gross >= target;
-
-  return (
-    <Modal title={isEdit ? "Edit Job" : "Log a Job"} onClose={onClose}>
-      <Input label="Date" type="date" value={form.date} onChange={(v) => set("date", v)} />
-      <Select label="Service Type" value={form.service} onChange={(v) => set("service", v)} options={SERVICES} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Input label="Revenue ($)" type="number" value={form.revenue} onChange={(v) => set("revenue", v)} placeholder="0" />
-        <Input label="Direct Costs ($)" type="number" value={form.cost} onChange={(v) => set("cost", v)} placeholder="0" />
-      </div>
-
-      {/* Profit Preview */}
-      {(form.revenue || form.cost) && (
-        <div style={{
-          background: atTarget ? C.successDim : belowTarget ? C.warnDim : C.card,
-          border: `1px solid ${atTarget ? C.success + "44" : belowTarget ? C.warn + "44" : C.border}`,
-          borderRadius: 12, padding: "12px", marginBottom: 12,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>Gross Profit Preview</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: atTarget ? C.success : belowTarget ? C.warn : C.text }}>{fmt(gross)}</div>
-            </div>
-            <div style={{ fontSize: 12, color: atTarget ? C.success : C.warn, fontWeight: 600, textAlign: "right", maxWidth: 140 }}>
-              {atTarget ? "✓ Meets profit target" : belowTarget ? `⚠ Below ${fmt(target)} target` : ""}
-            </div>
-          </div>
-          <div style={{ marginTop: 10, display: "flex", gap: 16 }}>
-            {[["Revenue", fmt(parseFloat(form.revenue) || 0), C.text], ["Direct Costs", fmt(parseFloat(form.cost) || 0), C.muted]].map(([l, v, c]) => (
-              <div key={l}>
-                <div style={{ fontSize: 11, color: C.muted }}>{l}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: c }}>{v}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <Select label="City / Area" value={form.city} onChange={(v) => set("city", v)} options={CITIES} />
-      <Input label="Tire Size" value={form.tireSize} onChange={(v) => set("tireSize", v)} placeholder="e.g. 225/65R17" />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Select label="Lead Source" value={form.source} onChange={(v) => set("source", v)} options={SOURCES} />
-        <Select label="Payment" value={form.payment} onChange={(v) => set("payment", v)} options={PAYMENTS} />
-      </div>
-      <Input label="Notes (optional)" value={form.notes} onChange={(v) => set("notes", v)} placeholder="Any details..." />
-
-      <Btn label={isEdit ? "Save Changes" : "Log Job"} onClick={() => onSave(form)} style={{ width: "100%", marginTop: 4 }} />
-      {isEdit && <Btn label="Delete Job" variant="danger" onClick={() => onDelete(job.id)} style={{ width: "100%", marginTop: 8 }} />}
+      <FInput label="Notes (optional)" value={form.notes} onChange={v=>set("notes",v)} placeholder="Any details..."/>
+      <Btn label={isEdit?"Save Changes":"Log Job"} onClick={()=>onSave(form)} style={{width:"100%",marginTop:4}}/>
+      {isEdit&&<Btn label="Delete Job" variant="danger" onClick={()=>onDelete(job.id)} style={{width:"100%",marginTop:8}}/>}
     </Modal>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// HISTORY
-// ═══════════════════════════════════════════════════════════════════════════════
-const History = ({ jobs, onAdd, onDelete, settings }) => {
-  const [search, setSearch] = useState("");
-  const [filterService, setFilterService] = useState("All");
-  const [showJob, setShowJob] = useState(null);
+// ── NAV ───────────────────────────────────────────────────────────────────────
+const NAV=[{id:"dashboard",label:"Dashboard",icon:"home"},{id:"history",label:"History",icon:"history"},{id:"payouts",label:"Payouts",icon:"dollar"},{id:"stock",label:"Stock",icon:"package"},{id:"settings",label:"Settings",icon:"settings"}];
+const BottomNav=({active,setActive})=>(
+  <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",paddingBottom:4,zIndex:100}}>
+    {NAV.map(n=>{const on=active===n.id;return(
+      <button key={n.id} onClick={()=>setActive(n.id)} style={{flex:1,padding:"10px 0 6px",background:"transparent",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+        <Icon name={n.icon} size={20} color={on?C.orange:C.subtle}/>
+        <span style={{fontSize:10,fontWeight:on?700:500,color:on?C.orange:C.subtle,letterSpacing:"0.02em"}}>{n.label}</span>
+      </button>
+    );})}
+  </div>
+);
+const FAB=({onClick})=>(
+  <button onClick={onClick} style={{position:"fixed",bottom:76,right:"calc(50% - 199px)",width:52,height:52,borderRadius:"50%",background:`linear-gradient(135deg,${C.orange},#CC4400)`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 20px ${C.orange}66`,zIndex:200}}>
+    <Icon name="plus" size={22} color="#fff"/>
+  </button>
+);
 
-  const filtered = jobs.filter((j) => {
-    const q = search.toLowerCase();
-    const matchQ = !q || j.city.toLowerCase().includes(q) || j.service.toLowerCase().includes(q) || j.tireSize.toLowerCase().includes(q);
-    const matchS = filterService === "All" || j.service === filterService;
-    return matchQ && matchS;
-  });
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+const Dashboard=({jobs,settings})=>{
+  const wk=jobs.filter(j=>isThisWeek(j.date));
+  const rev=wk.reduce((s,j)=>s+j.revenue,0);
+  const dc=wk.reduce((s,j)=>s+j.cost,0);
+  const gp=rev-dc;
+  const fixed=calcFixed(settings);
+  const net=gp-fixed;
+  const avg=wk.length?gp/wk.length:0;
+  const jobsNeeded=avg>0?Math.max(0,Math.ceil((settings.weeklyGoal-net)/avg)):0;
+  const goalPct=Math.min((net/settings.weeklyGoal)*100,100);
+  const tax=net*(settings.taxRate/100);
+  const payout=(net-tax)*(settings.ownerSplit/100);
+  const netColor=net>=0?C.success:C.danger;
 
-  const grouped = groupByWeek(filtered);
+  const bySvc={};
+  wk.forEach(j=>{if(!bySvc[j.service])bySvc[j.service]={gp:0,count:0};bySvc[j.service].gp+=j.revenue-j.cost;bySvc[j.service].count++;});
+  const bestSvc=Object.entries(bySvc).sort((a,b)=>b[1].gp-a[1].gp)[0];
+  const byCity={};
+  wk.forEach(j=>{if(!byCity[j.city])byCity[j.city]=0;byCity[j.city]+=j.revenue-j.cost;});
+  const bestCity=Object.entries(byCity).sort((a,b)=>b[1]-a[1])[0];
+  const belowTarget=wk.some(j=>{const g=j.revenue-j.cost;return j.service==="Flat Repair"?g<settings.repairTarget:j.service==="Tire Replacement"?g<settings.replacementTarget:false;});
 
-  const serviceFilters = ["All", ...SERVICES.slice(0, 3)];
-
-  return (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 20, fontWeight: 900 }}>Job History</div>
-        <Btn label="Log Job" icon="plus" onClick={() => setShowJob({})} style={{ padding: "8px 14px", fontSize: 13 }} />
-      </div>
-
-      {/* Search */}
-      <div style={{ position: "relative", marginBottom: 12 }}>
-        <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
-          <Icon name="search" size={16} color={C.subtle} />
+  const now=new Date(); const wd=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][now.getDay()];
+  return(
+    <div style={{padding:"16px 16px 0"}}>
+      {/* Logo */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:44,height:44,borderRadius:14,background:`linear-gradient(135deg,${C.orange},#CC4400)`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 16px ${C.orange}44`}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="3" fill="white"/>
+              <line x1="12" y1="3" x2="12" y2="7" stroke="white" strokeWidth="2"/>
+              <line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2"/>
+              <line x1="3" y1="12" x2="7" y2="12" stroke="white" strokeWidth="2"/>
+              <line x1="17" y1="12" x2="21" y2="12" stroke="white" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{fontSize:20,fontWeight:900,letterSpacing:"-0.02em",lineHeight:1.1}}>Wheel <span style={{color:C.orange}}>Rush</span></div>
+            <div style={{fontSize:11,color:C.muted}}>Mobile Tire Repair</div>
+          </div>
         </div>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by city, service, or size..."
-          style={{ width: "100%", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px 10px 36px", color: C.text, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+        <div style={{fontSize:11,color:C.muted,textAlign:"right"}}>
+          <div style={{fontWeight:700,color:C.text}}>{wd} · {now.toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
+          <div>Today</div>
+        </div>
       </div>
 
-      {/* Quick Filters */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 14 }}>
-        {serviceFilters.map((s) => (
-          <button key={s} onClick={() => setFilterService(s)} style={{
-            padding: "6px 14px", borderRadius: 20, border: "none", whiteSpace: "nowrap", cursor: "pointer", fontSize: 12, fontWeight: 600,
-            background: filterService === s ? C.orange : C.card,
-            color: filterService === s ? "#fff" : C.muted,
-          }}>{s}</button>
+      {/* Hero */}
+      <div style={{background:`linear-gradient(135deg,${C.card} 0%,#1A1200 100%)`,border:`1px solid ${C.border}`,borderRadius:20,padding:20,marginBottom:12,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-20,right:-20,width:100,height:100,borderRadius:"50%",background:C.orange+"08"}}/>
+        <div style={{fontSize:12,fontWeight:700,letterSpacing:"0.1em",color:C.muted,textTransform:"uppercase",marginBottom:8}}>Net Profit This Week</div>
+        <div style={{fontSize:48,fontWeight:900,color:netColor,letterSpacing:"-0.03em",lineHeight:1}}>{fmt(net)}</div>
+        <div style={{fontSize:12,color:C.muted,marginTop:6}}>After direct costs and fixed expenses</div>
+        <div style={{marginTop:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+            <span style={{fontSize:12,color:C.muted}}>Weekly Goal Progress</span>
+            <span style={{fontSize:12,fontWeight:700,color:goalPct>=100?C.success:C.orange}}>{pct(goalPct)}</span>
+          </div>
+          <ProgressBar value={net} max={settings.weeklyGoal} color={goalPct>=100?C.success:C.orange}/>
+          <div style={{fontSize:11,color:C.subtle,marginTop:6}}>Goal: {fmt(settings.weeklyGoal)} · {wk.length} jobs this week</div>
+        </div>
+      </div>
+
+      {/* Breakdown */}
+      <SectionLabel>Breakdown</SectionLabel>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+        {[["Revenue",fmt(rev),C.text],["Gross Profit",fmt(gp),C.orange],["Direct Costs",fmt(dc),C.muted],["Weekly Fixed Expenses",fmt(fixed),C.muted]].map(([l,v,co])=>(
+          <div key={l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:14}}>
+            <div style={{fontSize:20,fontWeight:800,color:co}}>{v}</div>
+            <div style={{fontSize:11,color:C.muted,marginTop:3}}>{l}</div>
+          </div>
         ))}
       </div>
 
-      {/* Job Groups */}
-      {grouped.map(([weekStart, weekJobs]) => {
-        const wRev = weekJobs.reduce((s, j) => s + j.revenue, 0);
-        const wGross = weekJobs.reduce((s, j) => s + j.revenue - j.cost, 0);
-        const d = new Date(weekStart);
-        const end = new Date(d); end.setDate(d.getDate() + 6);
-        const label = `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+      {/* Insights */}
+      <SectionLabel>Insights</SectionLabel>
+      <Card>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div><div style={{fontSize:26,fontWeight:800}}>{fmt(avg)}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>Avg Gross Profit per Job</div></div>
+          {jobsNeeded>0?<div style={{textAlign:"right"}}><div style={{fontSize:26,fontWeight:800,color:C.orange}}>{jobsNeeded}</div><div style={{fontSize:11,color:C.muted}}>Jobs to Hit Goal</div></div>:<Badge label="Goal Reached!" color={C.success}/>}
+        </div>
+      </Card>
+      {bestSvc&&<Card style={{borderColor:C.orange+"33"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,borderRadius:10,background:C.orangeDim,display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="star" size={16} color={C.orange}/></div>
+          <div>
+            <div style={{fontSize:12,color:C.muted,fontWeight:600}}>Most Profitable Service</div>
+            <div style={{fontSize:15,fontWeight:800}}>{bestSvc[0]}</div>
+            <div style={{fontSize:11,color:C.muted}}>{fmt(bestSvc[1].gp)} gross · {bestSvc[1].count} jobs</div>
+          </div>
+        </div>
+      </Card>}
+      {bestCity&&<Card>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,borderRadius:10,background:"#22C55E11",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="trendUp" size={16} color={C.success}/></div>
+          <div>
+            <div style={{fontSize:12,color:C.muted,fontWeight:600}}>Best Performing Area</div>
+            <div style={{fontSize:15,fontWeight:800}}>{bestCity[0]}</div>
+            <div style={{fontSize:11,color:C.muted}}>{fmt(bestCity[1])} gross profit this week</div>
+          </div>
+        </div>
+      </Card>}
+      {belowTarget&&<Card style={{borderColor:C.warn+"55",background:C.warnDim}}>
+        <div style={{display:"flex",gap:10}}><Icon name="alert" size={18} color={C.warn}/>
+          <div><div style={{fontSize:13,fontWeight:700,color:C.warn}}>Margin Warning</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>Some jobs this week came in below your profit targets. Consider reviewing your pricing.</div></div>
+        </div>
+      </Card>}
 
-        return (
-          <div key={weekStart} style={{ marginBottom: 20 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.muted }}>{label}</div>
-              <div style={{ fontSize: 12, color: C.muted }}>{weekJobs.length} jobs · <span style={{ color: C.orange, fontWeight: 700 }}>{fmt(wGross)} GP</span></div>
+      {/* Payout */}
+      <SectionLabel>Projected Friday Payout</SectionLabel>
+      <Card style={{borderColor:C.orange+"44"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:700}}>Payout Projection</div><Badge label="Friday" color={C.orange}/>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+          <span style={{fontSize:13,color:C.muted}}>Owner Take-Home ({settings.ownerSplit}%)</span>
+          <span style={{fontSize:15,fontWeight:800,color:C.orange}}>{fmt(payout)}</span>
+        </div>
+        <Divider/>
+        <div style={{display:"flex",justifyContent:"space-between"}}>
+          <div><div style={{fontSize:11,color:C.muted}}>Set Aside for Taxes</div><div style={{fontSize:11,color:C.subtle}}>Based on {settings.taxRate}% reserve</div></div>
+          <div style={{fontSize:15,fontWeight:800,color:C.warn}}>{fmt(tax)}</div>
+        </div>
+      </Card>
+      <div style={{height:8}}/>
+    </div>
+  );
+};
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+const History=({jobs,onAdd,onDelete,settings})=>{
+  const [search,setSearch]=useState("");
+  const [filterSvc,setFilterSvc]=useState("All");
+  const [showJob,setShowJob]=useState(null);
+  const filtered=jobs.filter(j=>{
+    const q=search.toLowerCase();
+    const mQ=!q||j.city.toLowerCase().includes(q)||j.service.toLowerCase().includes(q)||j.tireSize.toLowerCase().includes(q);
+    const mS=filterSvc==="All"||j.service===filterSvc;
+    return mQ&&mS;
+  });
+  const grouped=groupByWeek(filtered);
+  return(
+    <div style={{padding:"16px 16px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div style={{fontSize:20,fontWeight:900}}>Job History</div>
+        <Btn label="Log Job" icon="plus" onClick={()=>setShowJob({})} style={{padding:"8px 14px",fontSize:13}}/>
+      </div>
+      <div style={{position:"relative",marginBottom:12}}>
+        <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)"}}><Icon name="search" size={16} color={C.subtle}/></div>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search city, service, or size..."
+          style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 12px 10px 36px",color:C.text,fontSize:14,outline:"none",boxSizing:"border-box"}}/>
+      </div>
+      <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
+        {["All","Flat Repair","Tire Replacement","Installation","Lug Nut Removal"].map(s=>(
+          <button key={s} onClick={()=>setFilterSvc(s)} style={{padding:"6px 14px",borderRadius:20,border:"none",whiteSpace:"nowrap",cursor:"pointer",fontSize:12,fontWeight:600,background:filterSvc===s?C.orange:C.card,color:filterSvc===s?"#fff":C.muted}}>{s}</button>
+        ))}
+      </div>
+      {grouped.map(([ws,wjobs])=>{
+        const wGP=wjobs.reduce((s,j)=>s+j.revenue-j.cost,0);
+        return(
+          <div key={ws} style={{marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.muted}}>{weekLabel(ws)}</div>
+              <div style={{fontSize:12,color:C.muted}}>{wjobs.length} jobs · <span style={{color:C.orange,fontWeight:700}}>{fmt(wGP)} GP</span></div>
             </div>
-
-            {weekJobs.map((j) => {
-              const gp = j.revenue - j.cost;
-              const target = j.service === "Flat Repair" ? settings.repairTarget : settings.replacementTarget;
-              const gpColor = gp >= target ? C.success : gp >= target * 0.8 ? C.warn : C.danger;
-
-              return (
-                <div key={j.id} onClick={() => setShowJob(j)} style={{
-                  background: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
-                  padding: "14px", marginBottom: 8, cursor: "pointer",
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 800 }}>{j.service}</div>
-                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{j.city} · {j.tireSize}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 15, fontWeight: 800 }}>{fmt(j.revenue)}</div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: gpColor }}>{fmt(gp)} GP</div>
-                    </div>
+            {wjobs.map(j=>{
+              const gp=j.revenue-j.cost;
+              const target=j.service==="Flat Repair"?settings.repairTarget:settings.replacementTarget;
+              const gpColor=gp>=target?C.success:gp>=target*0.8?C.warn:C.danger;
+              return(
+                <div key={j.id} onClick={()=>setShowJob(j)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:14,marginBottom:8,cursor:"pointer"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                    <div><div style={{fontSize:14,fontWeight:800}}>{j.service}</div><div style={{fontSize:12,color:C.muted,marginTop:2}}>{j.city} · {j.tireSize}</div></div>
+                    <div style={{textAlign:"right"}}><div style={{fontSize:15,fontWeight:800}}>{fmt(j.revenue)}</div><div style={{fontSize:12,fontWeight:700,color:gpColor}}>{fmt(gp)} GP</div></div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                    <Badge label={j.source} color={C.muted} bg={C.border} />
-                    <Badge label={j.payment} color={C.muted} bg={C.border} />
-                    {gp < target && <Badge label="Below Target" color={C.warn} />}
+                  <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
+                    <Badge label={j.source} color={C.muted} bg={C.border}/>
+                    <Badge label={j.payment} color={C.muted} bg={C.border}/>
+                    {gp<target&&<Badge label="Below Target" color={C.warn}/>}
                   </div>
                 </div>
               );
@@ -688,98 +439,49 @@ const History = ({ jobs, onAdd, onDelete, settings }) => {
           </div>
         );
       })}
-
-      {filtered.length === 0 && (
-        <div style={{ textAlign: "center", padding: "40px 0", color: C.muted }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-          <div style={{ fontWeight: 600 }}>No jobs found</div>
-        </div>
-      )}
-
-      {showJob !== null && (
-        <JobModal
-          job={showJob?.id ? showJob : null}
-          settings={settings}
-          onClose={() => setShowJob(null)}
-          onSave={(form) => { onAdd(form); setShowJob(null); }}
-          onDelete={(id) => { onDelete(id); setShowJob(null); }}
-        />
-      )}
+      {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:C.muted}}><div style={{fontSize:32,marginBottom:12}}>🔍</div><div style={{fontWeight:600}}>No jobs found</div></div>}
+      {showJob!==null&&<JobModal job={showJob&&showJob.id?showJob:null} settings={settings} onClose={()=>setShowJob(null)} onSave={form=>{onAdd(form);setShowJob(null);}} onDelete={id=>{onDelete(id);setShowJob(null);}}/>}
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PAYOUTS
-// ═══════════════════════════════════════════════════════════════════════════════
-const Payouts = ({ jobs, settings }) => {
-  const grouped = groupByWeek(jobs);
-
-  return (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 4 }}>Payouts</div>
-      <div style={{ fontSize: 12, color: C.muted, marginBottom: 20 }}>Weekly breakdown and take-home projections</div>
-
-      {grouped.map(([weekStart, weekJobs]) => {
-        const rev = weekJobs.reduce((s, j) => s + j.revenue, 0);
-        const cost = weekJobs.reduce((s, j) => s + j.cost, 0);
-        const gross = rev - cost;
-        const fixed = calcFixed(settings);
-        const net = gross - fixed;
-        const tax = net * (settings.taxRate / 100);
-        const payout = (net - tax) * (settings.ownerSplit / 100);
-
-        const d = new Date(weekStart);
-        const end = new Date(d); end.setDate(d.getDate() + 6);
-        const label = `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-
-        return (
-          <Card key={weekStart} style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>{label}</div>
-                <div style={{ fontSize: 11, color: C.muted }}>{weekJobs.length} jobs</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: C.orange }}>{fmt(payout)}</div>
-                <div style={{ fontSize: 11, color: C.muted }}>Take-Home</div>
-              </div>
+// ── PAYOUTS ───────────────────────────────────────────────────────────────────
+const Payouts=({jobs,settings})=>{
+  const grouped=groupByWeek(jobs);
+  return(
+    <div style={{padding:"16px 16px 0"}}>
+      <div style={{fontSize:20,fontWeight:900,marginBottom:4}}>Payouts</div>
+      <div style={{fontSize:12,color:C.muted,marginBottom:20}}>Weekly breakdown and take-home projections</div>
+      {grouped.map(([ws,wjobs])=>{
+        const rev=wjobs.reduce((s,j)=>s+j.revenue,0);
+        const cost=wjobs.reduce((s,j)=>s+j.cost,0);
+        const gp=rev-cost; const fixed=calcFixed(settings);
+        const net=gp-fixed; const tax=net*(settings.taxRate/100);
+        const payout=(net-tax)*(settings.ownerSplit/100);
+        return(
+          <Card key={ws} style={{marginBottom:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div><div style={{fontSize:13,fontWeight:700}}>{weekLabel(ws)}</div><div style={{fontSize:11,color:C.muted}}>{wjobs.length} jobs</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:24,fontWeight:900,color:C.orange}}>{fmt(payout)}</div><div style={{fontSize:11,color:C.muted}}>Take-Home</div></div>
             </div>
-
-            <Divider />
-
-            {[
-              ["Revenue", fmt(rev), C.text],
-              ["Direct Costs", `– ${fmt(cost)}`, C.muted],
-              ["Gross Profit", fmt(gross), C.text],
-              ["Weekly Fixed Expenses", `– ${fmt(fixed)}`, C.muted],
-              ["Net Profit", fmt(net), net >= 0 ? C.success : C.danger],
-            ].map(([l, v, c]) => (
-              <div key={l} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                <span style={{ fontSize: 13, color: C.muted }}>{l}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: c }}>{v}</span>
+            <Divider/>
+            {[["Revenue",fmt(rev),C.text],["Direct Costs",`– ${fmt(cost)}`,C.muted],["Gross Profit",fmt(gp),C.text],["Weekly Fixed Expenses",`– ${fmt(fixed)}`,C.muted],["Net Profit",fmt(net),net>=0?C.success:C.danger]].map(([l,v,co])=>(
+              <div key={l} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                <span style={{fontSize:13,color:C.muted}}>{l}</span>
+                <span style={{fontSize:13,fontWeight:700,color:co}}>{v}</span>
               </div>
             ))}
-
-            <Divider />
-
-            <div style={{ background: C.warnDim, borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.warn }}>Set Aside for Taxes</div>
-                  <div style={{ fontSize: 11, color: C.muted }}>Recommended {settings.taxRate}% reserve</div>
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: C.warn }}>{fmt(tax)}</div>
+            <Divider/>
+            <div style={{background:C.warnDim,borderRadius:10,padding:"10px 12px",marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <div><div style={{fontSize:12,fontWeight:700,color:C.warn}}>Set Aside for Taxes</div><div style={{fontSize:11,color:C.muted}}>Recommended {settings.taxRate}% reserve</div></div>
+                <div style={{fontSize:16,fontWeight:800,color:C.warn}}>{fmt(tax)}</div>
               </div>
             </div>
-
-            <div style={{ background: C.orangeDim, borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.orange }}>Projected Friday Payout</div>
-                  <div style={{ fontSize: 11, color: C.muted }}>Owner · {settings.ownerSplit}% split</div>
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: C.orange }}>{fmt(payout)}</div>
+            <div style={{background:C.orangeDim,borderRadius:10,padding:"10px 12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between"}}>
+                <div><div style={{fontSize:12,fontWeight:700,color:C.orange}}>Projected Friday Payout</div><div style={{fontSize:11,color:C.muted}}>Owner · {settings.ownerSplit}% split</div></div>
+                <div style={{fontSize:18,fontWeight:900,color:C.orange}}>{fmt(payout)}</div>
               </div>
             </div>
           </Card>
@@ -789,365 +491,204 @@ const Payouts = ({ jobs, settings }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// EXPENSES
-// ═══════════════════════════════════════════════════════════════════════════════
-const Expenses = ({ expenses, setExpenses }) => {
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ date: "2025-07-14", category: "Fuel", amount: "", note: "" });
-
-  const totalSpent = expenses.reduce((s, e) => s + e.amount, 0);
-  const byCat = {};
-  expenses.forEach((e) => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
-
-  const quickAdd = (cat) => {
-    setForm((f) => ({ ...f, category: cat }));
-    setShowModal(true);
-  };
-
-  const save = () => {
-    if (!form.amount) return;
-    setExpenses((prev) => [...prev, { ...form, id: Date.now(), amount: parseFloat(form.amount) }]);
-    setForm({ date: "2025-07-14", category: "Fuel", amount: "", note: "" });
-    setShowModal(false);
-  };
-
-  const del = (id) => setExpenses((prev) => prev.filter((e) => e.id !== id));
-
-  return (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-        <div style={{ fontSize: 20, fontWeight: 900 }}>Expenses</div>
-        <Btn label="Add" icon="plus" onClick={() => setShowModal(true)} style={{ padding: "8px 14px", fontSize: 13 }} />
+// ── EXPENSES ──────────────────────────────────────────────────────────────────
+const Expenses=({expenses,setExpenses})=>{
+  const [showModal,setShowModal]=useState(false);
+  const [form,setForm]=useState({date:today(),category:"Fuel",amount:"",note:""});
+  const total=expenses.reduce((s,e)=>s+e.amount,0);
+  const save=()=>{if(!form.amount)return;setExpenses(p=>[...p,{...form,id:Date.now(),amount:parseFloat(form.amount)}]);setForm({date:today(),category:"Fuel",amount:"",note:""});setShowModal(false);};
+  const del=id=>setExpenses(p=>p.filter(e=>e.id!==id));
+  return(
+    <div style={{padding:"16px 16px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <div style={{fontSize:20,fontWeight:900}}>Expenses</div>
+        <Btn label="Add" icon="plus" onClick={()=>setShowModal(true)} style={{padding:"8px 14px",fontSize:13}}/>
       </div>
-      <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Track fuel, supplies, tools, and repairs as you go</div>
-
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: C.danger }}>{fmt(totalSpent)}</div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Total This Week</div>
-        </div>
-        <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>{expenses.length}</div>
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Expenses Logged</div>
-        </div>
+      <div style={{fontSize:12,color:C.muted,marginBottom:16}}>Track fuel, supplies, tools, and repairs as you go</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:14}}><div style={{fontSize:22,fontWeight:800,color:C.danger}}>{fmt(total)}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>Total This Week</div></div>
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:14}}><div style={{fontSize:22,fontWeight:800}}>{expenses.length}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>Expenses Logged</div></div>
       </div>
-
-      {/* Info */}
-      <Card style={{ borderColor: C.orange + "33", background: C.orangeDim }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <Icon name="info" size={16} color={C.orange} />
-          <div style={{ fontSize: 12, color: C.muted }}>Every expense logged here reduces your weekly net profit — stay on top of it daily.</div>
-        </div>
+      <Card style={{borderColor:C.orange+"33",background:C.orangeDim}}>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}><Icon name="info" size={16} color={C.orange}/><div style={{fontSize:12,color:C.muted}}>Every expense logged here reduces your weekly net profit — stay on top of it daily.</div></div>
       </Card>
-
-      {/* Quick Add */}
       <SectionLabel>Quick Add</SectionLabel>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {["Fuel", "Tolls", "Supplies"].map((cat) => (
-          <button key={cat} onClick={() => quickAdd(cat)} style={{
-            padding: "8px 14px", background: C.card, border: `1px solid ${C.border}`, borderRadius: 20,
-            color: C.text, fontSize: 13, fontWeight: 600, cursor: "pointer",
-          }}>+ {cat}</button>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        {["Fuel","Tolls","Supplies"].map(cat=>(
+          <button key={cat} onClick={()=>{setForm(f=>({...f,category:cat}));setShowModal(true);}} style={{padding:"8px 14px",background:C.card,border:`1px solid ${C.border}`,borderRadius:20,color:C.text,fontSize:13,fontWeight:600,cursor:"pointer"}}>+ {cat}</button>
         ))}
       </div>
-
-      {/* Expense List */}
-      {expenses.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "40px 0", color: C.muted }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>No expenses logged yet</div>
-          <div style={{ fontSize: 12 }}>Start by adding fuel or supplies above</div>
-        </div>
-      ) : (
-        expenses.map((e) => (
-          <div key={e.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{e.category}</div>
-              {e.note && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{e.note}</div>}
-              <div style={{ fontSize: 11, color: C.subtle, marginTop: 2 }}>{e.date}</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: C.danger }}>– {fmt(e.amount)}</div>
-              <button onClick={() => del(e.id)} style={{ background: "transparent", border: "none", cursor: "pointer" }}>
-                <Icon name="trash" size={16} color={C.subtle} />
-              </button>
+      {expenses.length===0?<div style={{textAlign:"center",padding:"40px 0",color:C.muted}}><div style={{fontSize:36,marginBottom:12}}>📋</div><div style={{fontWeight:700,marginBottom:4}}>No expenses logged yet</div><div style={{fontSize:12}}>Start by adding fuel or supplies above</div></div>
+        :expenses.map(e=>(
+          <div key={e.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:14,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><div style={{fontSize:14,fontWeight:700}}>{e.category}</div>{e.note&&<div style={{fontSize:12,color:C.muted,marginTop:2}}>{e.note}</div>}<div style={{fontSize:11,color:C.subtle,marginTop:2}}>{e.date}</div></div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{fontSize:16,fontWeight:800,color:C.danger}}>– {fmt(e.amount)}</div>
+              <button onClick={()=>del(e.id)} style={{background:"transparent",border:"none",cursor:"pointer"}}><Icon name="trash" size={16} color={C.subtle}/></button>
             </div>
           </div>
         ))
-      )}
-
-      {showModal && (
-        <Modal title="Log Expense" onClose={() => setShowModal(false)}>
-          <Input label="Date" type="date" value={form.date} onChange={(v) => setForm((f) => ({ ...f, date: v }))} />
-          <Select label="Category" value={form.category} onChange={(v) => setForm((f) => ({ ...f, category: v }))} options={EXP_CATEGORIES} />
-          <Input label="Amount ($)" type="number" value={form.amount} onChange={(v) => setForm((f) => ({ ...f, amount: v }))} placeholder="0.00" />
-          <Input label="Note (optional)" value={form.note} onChange={(v) => setForm((f) => ({ ...f, note: v }))} placeholder="What was this for?" />
-          <Btn label="Save Expense" onClick={save} style={{ width: "100%" }} />
-        </Modal>
-      )}
+      }
+      {showModal&&<Modal title="Log Expense" onClose={()=>setShowModal(false)}>
+        <FInput label="Date" type="date" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))}/>
+        <FSelect label="Category" value={form.category} onChange={v=>setForm(f=>({...f,category:v}))} options={EXP_CATS}/>
+        <FInput label="Amount ($)" type="number" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} placeholder="0.00"/>
+        <FInput label="Note (optional)" value={form.note} onChange={v=>setForm(f=>({...f,note:v}))} placeholder="What was this for?"/>
+        <Btn label="Save Expense" onClick={save} style={{width:"100%"}}/>
+      </Modal>}
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// STOCK
-// ═══════════════════════════════════════════════════════════════════════════════
-const Stock = ({ stock, setStock }) => {
-  const [search, setSearch] = useState("");
-  const [showLowAll, setShowLowAll] = useState(false);
-
-  const filtered = stock.filter((s) => !search || s.size.toLowerCase().includes(search) || s.brand.toLowerCase().includes(search));
-  const outOfStock = filtered.filter((s) => s.qty === 0);
-  const lowStock = filtered.filter((s) => s.qty > 0 && s.qty < s.min);
-  const inStock = filtered.filter((s) => s.qty >= s.min);
-
-  const totalTires = stock.reduce((s, t) => s + t.qty, 0);
-  const totalValue = stock.reduce((s, t) => s + t.qty * t.cost, 0);
-
-  const adj = (id, delta) => setStock((prev) => prev.map((s) => s.id === id ? { ...s, qty: Math.max(0, s.qty + delta) } : s));
-
-  const TireRow = ({ t, urgent }) => (
-    <div style={{
-      background: urgent ? C.dangerDim : C.card,
-      border: `1px solid ${urgent ? C.danger + "44" : C.warn + "44"}`,
-      borderRadius: 14, padding: "12px 14px", marginBottom: 8,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 800 }}>{t.size}</div>
-          <div style={{ fontSize: 12, color: C.muted }}>{t.brand}</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button onClick={() => adj(t.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", color: C.text, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon name="minus" size={14} color={C.text} />
-          </button>
-          <div style={{ width: 32, textAlign: "center", fontSize: 16, fontWeight: 800, color: urgent ? C.danger : C.warn }}>{t.qty}</div>
-          <button onClick={() => adj(t.id, 1)} style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon name="plus" size={14} color={C.text} />
-          </button>
+// ── STOCK ─────────────────────────────────────────────────────────────────────
+const Stock=({stock,setStock})=>{
+  const [search,setSearch]=useState("");
+  const [showAll,setShowAll]=useState(false);
+  const f=stock.filter(s=>!search||s.size.toLowerCase().includes(search)||s.brand.toLowerCase().includes(search));
+  const out=f.filter(s=>s.qty===0); const low=f.filter(s=>s.qty>0&&s.qty<s.min); const ok=f.filter(s=>s.qty>=s.min);
+  const total=stock.reduce((s,t)=>s+t.qty,0); const val=stock.reduce((s,t)=>s+t.qty*t.cost,0);
+  const adj=(id,d)=>setStock(p=>p.map(s=>s.id===id?{...s,qty:Math.max(0,s.qty+d)}:s));
+  const Row=({t,urgent})=>(
+    <div style={{background:urgent?C.dangerDim:C.card,border:`1px solid ${urgent?C.danger+"44":C.warn+"44"}`,borderRadius:14,padding:"12px 14px",marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontSize:14,fontWeight:800}}>{t.size}</div><div style={{fontSize:12,color:C.muted}}>{t.brand}</div></div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>adj(t.id,-1)} style={{width:28,height:28,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="minus" size={14} color={C.text}/></button>
+          <div style={{width:32,textAlign:"center",fontSize:16,fontWeight:800,color:urgent?C.danger:C.warn}}>{t.qty}</div>
+          <button onClick={()=>adj(t.id,1)} style={{width:28,height:28,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="plus" size={14} color={C.text}/></button>
         </div>
       </div>
-      <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-        {urgent ? <Badge label="OUT OF STOCK" color={C.danger} /> : <Badge label="LOW STOCK" color={C.warn} />}
-        <span style={{ fontSize: 11, color: C.subtle }}>Min: {t.min} · {fmt(t.cost)}/ea</span>
+      <div style={{marginTop:8,display:"flex",gap:8}}>
+        <Badge label={urgent?"OUT OF STOCK":"LOW STOCK"} color={urgent?C.danger:C.warn}/>
+        <span style={{fontSize:11,color:C.subtle}}>Min: {t.min} · {fmt(t.cost)}/ea</span>
       </div>
     </div>
   );
-
-  const NormalRow = ({ t }) => (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 14px", marginBottom: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700 }}>{t.size}</div>
-          <div style={{ fontSize: 12, color: C.muted }}>{t.brand} · {fmt(t.cost)}/ea</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button onClick={() => adj(t.id, -1)} style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon name="minus" size={14} color={C.text} />
-          </button>
-          <div style={{ width: 32, textAlign: "center", fontSize: 16, fontWeight: 800 }}>{t.qty}</div>
-          <button onClick={() => adj(t.id, 1)} style={{ width: 28, height: 28, borderRadius: 8, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon name="plus" size={14} color={C.text} />
-          </button>
+  const NRow=({t})=>(
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"12px 14px",marginBottom:8}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontSize:14,fontWeight:700}}>{t.size}</div><div style={{fontSize:12,color:C.muted}}>{t.brand} · {fmt(t.cost)}/ea</div></div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>adj(t.id,-1)} style={{width:28,height:28,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="minus" size={14} color={C.text}/></button>
+          <div style={{width:32,textAlign:"center",fontSize:16,fontWeight:800}}>{t.qty}</div>
+          <button onClick={()=>adj(t.id,1)} style={{width:28,height:28,borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name="plus" size={14} color={C.text}/></button>
         </div>
       </div>
     </div>
   );
-
-  return (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 16 }}>Inventory</div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-        {[
-          { label: "Total Tires", value: totalTires, color: C.text },
-          { label: "Stock Value", value: fmt(totalValue), color: C.orange },
-          { label: "Low Stock", value: lowStock.length, color: C.warn },
-          { label: "Out of Stock", value: outOfStock.length, color: C.danger },
-        ].map((s) => (
-          <div key={s.label} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{s.label}</div>
-          </div>
+  return(
+    <div style={{padding:"16px 16px 0"}}>
+      <div style={{fontSize:20,fontWeight:900,marginBottom:16}}>Inventory</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+        {[["Total Tires",total,C.text],["Stock Value",fmt(val),C.orange],["Low Stock",low.length,C.warn],["Out of Stock",out.length,C.danger]].map(([l,v,co])=>(
+          <div key={l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:14}}><div style={{fontSize:22,fontWeight:800,color:co}}>{v}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{l}</div></div>
         ))}
       </div>
-
-      <div style={{ position: "relative", marginBottom: 14 }}>
-        <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}>
-          <Icon name="search" size={16} color={C.subtle} />
-        </div>
-        <input value={search} onChange={(e) => setSearch(e.target.value.toLowerCase())} placeholder="Search tire size or brand..."
-          style={{ width: "100%", background: C.card, border: `1px solid ${C.border}`, borderRadius: 12, padding: "10px 12px 10px 36px", color: C.text, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+      <div style={{position:"relative",marginBottom:14}}>
+        <div style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)"}}><Icon name="search" size={16} color={C.subtle}/></div>
+        <input value={search} onChange={e=>setSearch(e.target.value.toLowerCase())} placeholder="Search tire size or brand..."
+          style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 12px 10px 36px",color:C.text,fontSize:14,outline:"none",boxSizing:"border-box"}}/>
       </div>
-
-      {outOfStock.length > 0 && (
-        <>
-          <SectionLabel>Out of Stock — Needs Immediate Reorder</SectionLabel>
-          {outOfStock.map((t) => <TireRow key={t.id} t={t} urgent />)}
-        </>
-      )}
-
-      {lowStock.length > 0 && (
-        <>
-          <SectionLabel>Running Low</SectionLabel>
-          {(showLowAll ? lowStock : lowStock.slice(0, 3)).map((t) => <TireRow key={t.id} t={t} />)}
-          {lowStock.length > 3 && (
-            <button onClick={() => setShowLowAll(!showLowAll)} style={{ background: "transparent", border: "none", color: C.orange, fontSize: 13, fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>
-              {showLowAll ? "Show Less" : `Show All ${lowStock.length} Low-Stock Items`}
-            </button>
-          )}
-        </>
-      )}
-
-      {inStock.length > 0 && (
-        <>
-          <SectionLabel>In Stock</SectionLabel>
-          {inStock.map((t) => <NormalRow key={t.id} t={t} />)}
-        </>
-      )}
+      {out.length>0&&<><SectionLabel>Out of Stock — Reorder Now</SectionLabel>{out.map(t=><Row key={t.id} t={t} urgent={true}/>)}</>}
+      {low.length>0&&<><SectionLabel>Running Low</SectionLabel>{(showAll?low:low.slice(0,3)).map(t=><Row key={t.id} t={t} urgent={false}/>)}{low.length>3&&<button onClick={()=>setShowAll(!showAll)} style={{background:"transparent",border:"none",color:C.orange,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:12}}>{showAll?"Show Less":`Show All ${low.length} Low-Stock Items`}</button>}</>}
+      {ok.length>0&&<><SectionLabel>In Stock</SectionLabel>{ok.map(t=><NRow key={t.id} t={t}/>)}</>}
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SETTINGS
-// ═══════════════════════════════════════════════════════════════════════════════
-const Settings = ({ settings, setSettings }) => {
-  const [s, setS] = useState(settings);
-  const [newExp, setNewExp] = useState({ name: "", monthly: "" });
-
-  const save = () => setSettings(s);
-  const set = (k, v) => setS((prev) => ({ ...prev, [k]: v }));
-
-  const addFixed = () => {
-    if (!newExp.name || !newExp.monthly) return;
-    setS((prev) => ({ ...prev, fixedExpenses: [...prev.fixedExpenses, { id: Date.now(), name: newExp.name, monthly: parseFloat(newExp.monthly) }] }));
-    setNewExp({ name: "", monthly: "" });
-  };
-  const delFixed = (id) => setS((prev) => ({ ...prev, fixedExpenses: prev.fixedExpenses.filter((e) => e.id !== id) }));
-
-  const weeklyFixed = s.fixedExpenses.reduce((sum, e) => sum + e.monthly, 0) / 4.33;
-
-  return (
-    <div style={{ padding: "16px 16px 0" }}>
-      <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 20 }}>Settings</div>
-
-      {/* Goals & Tax */}
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+const Settings=({settings,setSettings})=>{
+  const [s,setS]=useState(settings);
+  const [newExp,setNewExp]=useState({name:"",monthly:""});
+  const set=(k,v)=>setS(p=>({...p,[k]:v}));
+  const addFixed=()=>{if(!newExp.name||!newExp.monthly)return;setS(p=>({...p,fixedExpenses:[...p.fixedExpenses,{id:Date.now(),name:newExp.name,monthly:parseFloat(newExp.monthly)}]}));setNewExp({name:"",monthly:""});};
+  const delFixed=id=>setS(p=>({...p,fixedExpenses:p.fixedExpenses.filter(e=>e.id!==id)}));
+  const wFixed=s.fixedExpenses.reduce((sum,e)=>sum+e.monthly,0)/4.33;
+  return(
+    <div style={{padding:"16px 16px 0"}}>
+      <div style={{fontSize:20,fontWeight:900,marginBottom:20}}>Settings</div>
       <SectionLabel>Goals & Tax</SectionLabel>
       <Card>
-        <Input label="Weekly Net Profit Goal ($)" type="number" value={s.weeklyGoal} onChange={(v) => set("weeklyGoal", parseFloat(v) || 0)} />
-        <div style={{ marginBottom: 0 }}>
-          <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>Tax Reserve Rate ({s.taxRate}%)</div>
-          <input type="range" min={10} max={40} value={s.taxRate} onChange={(e) => set("taxRate", parseInt(e.target.value))}
-            style={{ width: "100%", accentColor: C.orange }} />
-          <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>
-            We'll set aside {s.taxRate}% of net profit automatically — <span style={{ color: C.warn }}>don't touch this</span>
-          </div>
+        <FInput label="Weekly Net Profit Goal ($)" type="number" value={s.weeklyGoal} onChange={v=>set("weeklyGoal",parseFloat(v)||0)}/>
+        <div style={{marginBottom:0}}>
+          <div style={{fontSize:12,color:C.muted,fontWeight:600,marginBottom:6}}>Tax Reserve Rate ({s.taxRate}%)</div>
+          <input type="range" min={10} max={40} value={s.taxRate} onChange={e=>set("taxRate",parseInt(e.target.value))} style={{width:"100%",accentColor:C.orange}}/>
+          <div style={{fontSize:11,color:C.muted,marginTop:4}}>We'll set aside {s.taxRate}% of net profit — <span style={{color:C.warn}}>don't touch this fund</span></div>
         </div>
       </Card>
-
-      {/* Payout */}
       <SectionLabel>Payout</SectionLabel>
       <Card>
-        <div style={{ fontSize: 12, color: C.muted, fontWeight: 600, marginBottom: 6 }}>Owner Split ({s.ownerSplit}%)</div>
-        <input type="range" min={50} max={100} value={s.ownerSplit} onChange={(e) => set("ownerSplit", parseInt(e.target.value))}
-          style={{ width: "100%", accentColor: C.orange }} />
-        <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>Owner receives {s.ownerSplit}% of net profit after tax reserve</div>
+        <div style={{fontSize:12,color:C.muted,fontWeight:600,marginBottom:6}}>Owner Split ({s.ownerSplit}%)</div>
+        <input type="range" min={50} max={100} value={s.ownerSplit} onChange={e=>set("ownerSplit",parseInt(e.target.value))} style={{width:"100%",accentColor:C.orange}}/>
+        <div style={{fontSize:11,color:C.muted,marginTop:4}}>Owner receives {s.ownerSplit}% of net profit after tax reserve</div>
       </Card>
-
-      {/* Profit Targets */}
       <SectionLabel>Profit Targets per Job</SectionLabel>
       <Card>
-        <Input label={`Flat Repair — Minimum Gross Profit ($${s.repairTarget})`} type="number" value={s.repairTarget} onChange={(v) => set("repairTarget", parseFloat(v) || 0)} />
-        <Input label={`Tire Replacement — Minimum Gross Profit ($${s.replacementTarget})`} type="number" value={s.replacementTarget} onChange={(v) => set("replacementTarget", parseFloat(v) || 0)} style={{ marginBottom: 0 }} />
+        <FInput label={`Flat Repair — Min Gross Profit ($${s.repairTarget})`} type="number" value={s.repairTarget} onChange={v=>set("repairTarget",parseFloat(v)||0)}/>
+        <FInput label={`Tire Replacement — Min Gross Profit ($${s.replacementTarget})`} type="number" value={s.replacementTarget} onChange={v=>set("replacementTarget",parseFloat(v)||0)} style={{marginBottom:0}}/>
       </Card>
-
-      {/* Fixed Expenses */}
       <SectionLabel>Monthly Fixed Expenses</SectionLabel>
       <Card>
-        <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>These are divided across ~4.33 weeks. Currently {fmt(weeklyFixed)}/week.</div>
-        {s.fixedExpenses.map((e) => (
-          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{e.name}</div>
-              <div style={{ fontSize: 12, color: C.muted }}>{fmt(e.monthly)}/mo</div>
-            </div>
-            <button onClick={() => delFixed(e.id)} style={{ background: "transparent", border: "none", cursor: "pointer" }}>
-              <Icon name="trash" size={16} color={C.danger} />
-            </button>
+        <div style={{fontSize:11,color:C.muted,marginBottom:12}}>Divided across ~4.33 weeks · currently {fmt(wFixed)}/week</div>
+        {s.fixedExpenses.map(e=>(
+          <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${C.border}`}}>
+            <div><div style={{fontSize:13,fontWeight:600}}>{e.name}</div><div style={{fontSize:12,color:C.muted}}>{fmt(e.monthly)}/mo</div></div>
+            <button onClick={()=>delFixed(e.id)} style={{background:"transparent",border:"none",cursor:"pointer"}}><Icon name="trash" size={16} color={C.danger}/></button>
           </div>
         ))}
-        <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-          <input value={newExp.name} onChange={(e) => setNewExp((p) => ({ ...p, name: e.target.value }))} placeholder="Expense name"
-            style={{ flex: 2, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none" }} />
-          <input value={newExp.monthly} onChange={(e) => setNewExp((p) => ({ ...p, monthly: e.target.value }))} placeholder="$/mo" type="number"
-            style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", color: C.text, fontSize: 13, outline: "none" }} />
-          <button onClick={addFixed} style={{ background: C.orange, border: "none", borderRadius: 10, padding: "8px 12px", cursor: "pointer" }}>
-            <Icon name="plus" size={16} color="#fff" />
-          </button>
+        <div style={{marginTop:12,display:"flex",gap:8}}>
+          <input value={newExp.name} onChange={e=>setNewExp(p=>({...p,name:e.target.value}))} placeholder="Expense name" style={{flex:2,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",color:C.text,fontSize:13,outline:"none"}}/>
+          <input value={newExp.monthly} onChange={e=>setNewExp(p=>({...p,monthly:e.target.value}))} placeholder="$/mo" type="number" style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"8px 10px",color:C.text,fontSize:13,outline:"none"}}/>
+          <button onClick={addFixed} style={{background:C.orange,border:"none",borderRadius:10,padding:"8px 12px",cursor:"pointer"}}><Icon name="plus" size={16} color="#fff"/></button>
         </div>
       </Card>
-
-      {/* Google Review */}
       <SectionLabel>Business</SectionLabel>
       <Card>
-        <Input label="Google Review Link" value={s.googleReviewLink} onChange={(v) => set("googleReviewLink", v)} />
-        <div style={{ fontSize: 11, color: C.muted }}>Share this after every job to build your reputation</div>
+        <FInput label="Google Review Link" value={s.googleReviewLink} onChange={v=>set("googleReviewLink",v)}/>
+        <div style={{fontSize:11,color:C.muted}}>Share this after every job to build your reputation</div>
       </Card>
-
-      <Btn label="Save Settings" onClick={save} style={{ width: "100%", marginTop: 8, marginBottom: 16 }} />
+      <Btn label="Save Settings" onClick={()=>setSettings(s)} style={{width:"100%",marginTop:8,marginBottom:16}}/>
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// APP ROOT
-// ═══════════════════════════════════════════════════════════════════════════════
-export default function App() {
-  const [tab, setTab] = useState("dashboard");
-  const [jobs, setJobs] = useState(INITIAL_JOBS);
-  const [expenses, setExpenses] = useState(INITIAL_EXPENSES);
-  const [stock, setStock] = useState(INITIAL_STOCK);
-  const [settings, setSettings] = useState(INITIAL_SETTINGS);
-  const [showLogJob, setShowLogJob] = useState(false);
+// ── APP ROOT ──────────────────────────────────────────────────────────────────
+function App(){
+  const [tab,setTab]=useState("dashboard");
+  const [jobs,setJobs]=useState(INIT_JOBS);
+  const [expenses,setExpenses]=useState(INIT_EXPENSES);
+  const [stock,setStock]=useState(INIT_STOCK);
+  const [settings,setSettings]=useState(INIT_SETTINGS);
+  const [showLog,setShowLog]=useState(false);
 
-  const addJob = (form) => {
-    setJobs((prev) => {
-      const existing = prev.find((j) => j.id === form.id);
-      if (existing) return prev.map((j) => j.id === form.id ? { ...form, revenue: parseFloat(form.revenue), cost: parseFloat(form.cost) } : j);
-      return [{ ...form, id: Date.now(), revenue: parseFloat(form.revenue) || 0, cost: parseFloat(form.cost) || 0 }, ...prev];
+  const addJob=form=>{
+    setJobs(prev=>{
+      const ex=prev.find(j=>j.id===form.id);
+      if(ex) return prev.map(j=>j.id===form.id?{...form,revenue:parseFloat(form.revenue),cost:parseFloat(form.cost)}:j);
+      return [{...form,id:Date.now(),revenue:parseFloat(form.revenue)||0,cost:parseFloat(form.cost)||0},...prev];
     });
   };
+  const delJob=id=>setJobs(p=>p.filter(j=>j.id!==id));
 
-  const deleteJob = (id) => setJobs((prev) => prev.filter((j) => j.id !== id));
-
-  const pages = {
-    dashboard: <Dashboard jobs={jobs} settings={settings} expenses={expenses} />,
-    history: <History jobs={jobs} onAdd={addJob} onDelete={deleteJob} settings={settings} />,
-    payouts: <Payouts jobs={jobs} settings={settings} />,
-    stock: <Stock stock={stock} setStock={setStock} />,
-    settings: <Settings settings={settings} setSettings={setSettings} />,
+  const pages={
+    dashboard:<Dashboard jobs={jobs} settings={settings}/>,
+    history:<History jobs={jobs} onAdd={addJob} onDelete={delJob} settings={settings}/>,
+    payouts:<Payouts jobs={jobs} settings={settings}/>,
+    stock:<Stock stock={stock} setStock={setStock}/>,
+    settings:<Settings settings={settings} setSettings={setSettings}/>,
   };
 
-  return (
-    <>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      <div style={styles.app}>
-        <div style={styles.scrollArea}>{pages[tab]}</div>
-        <FAB onClick={() => setShowLogJob(true)} />
-        <BottomNav active={tab} setActive={setTab} />
-        {showLogJob && (
-          <JobModal
-            job={null}
-            settings={settings}
-            onClose={() => setShowLogJob(false)}
-            onSave={(form) => { addJob(form); setShowLogJob(false); }}
-            onDelete={() => {}}
-          />
-        )}
-      </div>
-    </>
+  return(
+    <div style={{background:C.bg,minHeight:"100vh",maxWidth:430,margin:"0 auto",fontFamily:"'DM Sans',sans-serif",color:C.text,position:"relative",display:"flex",flexDirection:"column"}}>
+      <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>{pages[tab]}</div>
+      <FAB onClick={()=>setShowLog(true)}/>
+      <BottomNav active={tab} setActive={setTab}/>
+      {showLog&&<JobModal job={null} settings={settings} onClose={()=>setShowLog(false)} onSave={form=>{addJob(form);setShowLog(false);}} onDelete={()=>{}}/>}
+    </div>
   );
 }
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
