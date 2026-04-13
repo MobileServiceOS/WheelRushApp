@@ -42,13 +42,13 @@ const styles = {
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const INITIAL_JOBS = [
-  { id: 1, date: "2025-07-14", service: "Flat Repair", city: "Phoenix", revenue: 85, cost: 12, source: "Google", payment: "Card", tireSize: "225/65R17", notes: "" },
-  { id: 2, date: "2025-07-14", service: "Tire Replacement", city: "Scottsdale", revenue: 320, cost: 190, source: "Yelp", payment: "Cash", tireSize: "235/55R18", notes: "2 tires" },
-  { id: 3, date: "2025-07-13", service: "Flat Repair", city: "Tempe", revenue: 85, cost: 12, source: "Repeat", payment: "Card", tireSize: "205/55R16", notes: "" },
-  { id: 4, date: "2025-07-13", service: "Installation", city: "Mesa", revenue: 160, cost: 40, source: "Google", payment: "Zelle", tireSize: "245/45R19", notes: "" },
-  { id: 5, date: "2025-07-12", service: "Tire Replacement", city: "Phoenix", revenue: 480, cost: 280, source: "Google", payment: "Card", tireSize: "215/60R16", notes: "4 tires" },
-  { id: 6, date: "2025-07-11", service: "Flat Repair", city: "Chandler", revenue: 85, cost: 12, source: "Yelp", payment: "Cash", tireSize: "225/50R18", notes: "" },
-  { id: 7, date: "2025-07-10", service: "Installation", city: "Phoenix", revenue: 200, cost: 55, source: "Google", payment: "Card", tireSize: "265/70R17", notes: "" },
+  { id: 1, date: "2025-07-14", service: "Flat Repair", city: "Miami Gardens", revenue: 85, cost: 12, source: "Google", payment: "Card", tireSize: "225/65R17", notes: "" },
+  { id: 2, date: "2025-07-14", service: "Tire Replacement", city: "Miramar", revenue: 320, cost: 190, source: "Yelp", payment: "Cash", tireSize: "235/55R18", notes: "2 tires" },
+  { id: 3, date: "2025-07-13", service: "Flat Repair", city: "Hialeah", revenue: 85, cost: 12, source: "Repeat", payment: "Card", tireSize: "205/55R16", notes: "" },
+  { id: 4, date: "2025-07-13", service: "Installation", city: "Doral", revenue: 160, cost: 40, source: "Google", payment: "Zelle", tireSize: "245/45R19", notes: "" },
+  { id: 5, date: "2025-07-12", service: "Tire Replacement", city: "Pembroke Pines", revenue: 480, cost: 280, source: "Google", payment: "Card", tireSize: "215/60R16", notes: "4 tires" },
+  { id: 6, date: "2025-07-11", service: "Flat Repair", city: "Fort Lauderdale", revenue: 85, cost: 12, source: "Yelp", payment: "Cash", tireSize: "225/50R18", notes: "" },
+  { id: 7, date: "2025-07-10", service: "Lug Nut Removal", city: "Hollywood", revenue: 200, cost: 55, source: "Google", payment: "Card", tireSize: "265/70R17", notes: "" },
 ];
 
 const INITIAL_EXPENSES = [
@@ -83,8 +83,18 @@ const INITIAL_SETTINGS = {
   googleReviewLink: "https://g.page/r/wheelrush",
 };
 
-const SERVICES = ["Flat Repair", "Tire Replacement", "Installation", "Rotation", "TPMS Service"];
-const CITIES = ["Phoenix", "Scottsdale", "Tempe", "Mesa", "Chandler", "Gilbert", "Glendale", "Miami Gardens"];
+const SERVICES = ["Flat Repair", "Tire Replacement", "Installation", "Lug Nut Removal", "Rotation", "TPMS Service"];
+const CITIES = [
+  // Miami-Dade County
+  "Miami", "Miami Gardens", "Hialeah", "Homestead", "Miami Beach", "North Miami",
+  "North Miami Beach", "Aventura", "Doral", "Coral Gables", "Kendall", "Cutler Bay",
+  "Palmetto Bay", "Pinecrest", "South Miami", "Sweetwater", "Opa-locka", "Miami Lakes",
+  // Broward County
+  "Fort Lauderdale", "Hollywood", "Pembroke Pines", "Miramar", "Coral Springs",
+  "Pompano Beach", "Davie", "Sunrise", "Plantation", "Lauderhill", "Weston",
+  "Deerfield Beach", "Margate", "Coconut Creek", "Tamarac", "North Lauderdale",
+  "Hallandale Beach", "Oakland Park", "Wilton Manors", "Boca Raton",
+];
 const SOURCES = ["Google", "Yelp", "Repeat", "Referral", "Instagram", "Walk-in"];
 const PAYMENTS = ["Card", "Cash", "Zelle", "Venmo", "Apple Pay"];
 const EXP_CATEGORIES = ["Fuel", "Supplies", "Tools", "Tolls", "Maintenance", "Marketing", "Other"];
