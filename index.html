@@ -116,6 +116,7 @@ initFB();
 
 // ── Firestore helpers ────────────────────────────────────────────────────────
 const db = name => _db ? _db.collection(name) : null;
+// Collections — all wr4_ prefix, no localStorage
 const COL = {
   customers: () => db('wr4_customers'),
   vehicles:  () => db('wr4_vehicles'),
@@ -126,19 +127,39 @@ const COL = {
   settings:  () => _db ? _db.collection('wr4_settings').doc('main') : null,
 };
 
+// listen() — NO orderBy so docs without createdAt are NOT silently excluded.
+// Sorting is done client-side after the snapshot arrives.
 function listen(col, cb) {
   if (!col) { cb([]); return () => {}; }
-  return col.orderBy('createdAt','desc')
-    .onSnapshot(s => cb(s.docs.map(d => ({...d.data(), id: d.id}))), () => cb([]));
+  return col.onSnapshot(
+    s => {
+      const docs = s.docs.map(d => ({...d.data(), id: d.id}));
+      // Client-side sort: newest first, fall back to id if no date
+      docs.sort((a,b) => {
+        const ta = a.createdAt || a.date || a.id || '';
+        const tb = b.createdAt || b.date || b.id || '';
+        return tb.localeCompare(ta);
+      });
+      cb(docs);
+    },
+    () => cb([])
+  );
 }
 function listenDoc(ref, cb) {
   if (!ref) { cb(null); return () => {}; }
   return ref.onSnapshot(s => cb(s.exists ? s.data() : null), () => cb(null));
 }
+// save() — always writes createdAt so docs are never excluded from queries
 async function save(col, data) {
   if (!col) return;
-  const id = data.id || (_db.collection('_').doc().id);
-  await col.doc(id).set({...data, id, updatedAt: new Date().toISOString()});
+  const id  = data.id || (_db.collection('_').doc().id);
+  const now = new Date().toISOString();
+  await col.doc(id).set({
+    ...data,
+    id,
+    createdAt:  data.createdAt  || now,   // preserve existing, set if new
+    updatedAt:  now,
+  });
   return id;
 }
 async function remove(col, id) {
@@ -1198,7 +1219,7 @@ function CityInput({value, onChange}) {
         className="finp"
         value={q}
         onChange={e=>{ setQ(e.target.value); onChange(e.target.value); setOpen(true); }}
-        onBlur={()=>setTimeout(()=>setOpen(false),150)}
+        onBlur={()=>setTimeout(()=>setOpen(false), 200)}
         onFocus={()=>setOpen(true)}
         placeholder="Type a city…"
         autoComplete="off"
@@ -1208,11 +1229,12 @@ function CityInput({value, onChange}) {
             border:`1px solid ${C.border}`,borderRadius:11,zIndex:300,overflow:'hidden',
             boxShadow:'0 8px 24px #0008',marginTop:3}}>
           {suggestions.map(s=>(
-            <div key={s} onMouseDown={()=>pick(s)}
-              style={{padding:'11px 14px',fontSize:14,cursor:'pointer',
-                borderBottom:`1px solid ${C.border}`,color:C.text}}
-              onMouseEnter={e=>e.currentTarget.style.background=C.surface}
-              onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div key={s}
+              onTouchStart={()=>pick(s)}
+              onClick={()=>pick(s)}
+              style={{padding:'13px 14px',fontSize:14,cursor:'pointer',
+                borderBottom:`1px solid ${C.border}`,color:C.text,
+                WebkitTapHighlightColor:'transparent'}}>
               {s}
             </div>
           ))}
@@ -1493,7 +1515,7 @@ function JobDetail({job, customers, vehicles, invoices, onEdit, onDelete, onClos
   const [viewInv,     setViewInv]     = useState(null);
 
   const quickStatus = async (field, val) => {
-    await save(COL.jobs(), {...job,[field]:val});
+    await save(COL.jobs(), {...job, [field]: val});
   };
 
   const sendInvoice = (inv, method) => {
@@ -1643,10 +1665,10 @@ function JobDetail({job, customers, vehicles, invoices, onEdit, onDelete, onClos
 
 // ── JOBS SCREEN ───────────────────────────────────────────────────────────────
 function JobsScreen({jobs, customers, vehicles, invoices, onNewJob}) {
-  const [filter, setFilter]   = useState('all');
-  const [search, setSearch]   = useState('');
-  const [selJob, setSelJob]   = useState(null);
-  const [editJob,setEditJob]  = useState(null);
+  const [filter,    setFilter]  = useState('all');
+  const [search,    setSearch]  = useState('');
+  const [selJobId,  setSelJobId]= useState(null);   // store id only, not snapshot
+  const [editJob,   setEditJob] = useState(null);
 
   const FILTERS = [
     {v:'all',    l:'All'},
@@ -1668,10 +1690,13 @@ function JobsScreen({jobs, customers, vehicles, invoices, onNewJob}) {
     return list;
   },[jobs,customers,filter,search]);
 
+  // Always derive the selected job from the live jobs array — never a stale snapshot
+  const selJob = selJobId ? jobs.find(j=>j.id===selJobId) || null : null;
+
   const handleDelete = async (job) => {
     if(!window.confirm('Delete this job?')) return;
     await remove(COL.jobs(), job.id);
-    setSelJob(null);
+    setSelJobId(null);
   };
 
   return (
@@ -1711,7 +1736,7 @@ function JobsScreen({jobs, customers, vehicles, invoices, onNewJob}) {
         const cust   = customers.find(c=>c.id===j.customerId);
         const profit = jobProfit(j);
         return (
-          <div className="jrow" key={j.id} onClick={()=>setSelJob(j)}>
+          <div className="jrow" key={j.id} onClick={()=>setSelJobId(j.id)}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:14,fontWeight:700}}>{j.service}</div>
@@ -1737,9 +1762,9 @@ function JobsScreen({jobs, customers, vehicles, invoices, onNewJob}) {
       {selJob && (
         <JobDetail
           job={selJob} customers={customers} vehicles={vehicles} invoices={invoices}
-          onEdit={()=>{setEditJob(selJob);setSelJob(null);}}
+          onEdit={()=>{setEditJob(selJob);setSelJobId(null);}}
           onDelete={()=>handleDelete(selJob)}
-          onClose={()=>setSelJob(null)}
+          onClose={()=>setSelJobId(null)}
         />
       )}
       {editJob && (
@@ -2580,8 +2605,9 @@ function App() {
   const [payouts,   setPayouts]   = useState([]);
   const [settings,  setSettings]  = useState({});
 
-  const authRef  = useRef(false);
-  const unsubRef = useRef([]);
+  const authRef   = useRef(false);
+  const authUnsub = useRef(null);  // kept separate — never cleared by Firestore effect
+  const unsubRef  = useRef([]);    // Firestore listeners only
 
   // ── Auth ─────────────────────────────────────────────────────────────────
   useEffect(()=>{
@@ -2594,7 +2620,8 @@ function App() {
 
     const attach = () => {
       if(!_auth){ setTimeout(attach, 100); return; }
-      const unsub = _auth.onAuthStateChanged(u => {
+      // Auth unsub stored separately — Firestore effect must not touch it
+      authUnsub.current = _auth.onAuthStateChanged(u => {
         if(cancelled) return;
         clearTimeout(timer);
         authRef.current = !!u;
@@ -2602,10 +2629,13 @@ function App() {
         setSync(u ? 'syncing' : 'offline');
         setReady(true);
       });
-      unsubRef.current.push(unsub);
     };
     attach();
-    return () => { cancelled=true; clearTimeout(timer); };
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      if(authUnsub.current) { authUnsub.current(); authUnsub.current = null; }
+    };
   }, []);
 
   // ── Firestore listeners ───────────────────────────────────────────────────
