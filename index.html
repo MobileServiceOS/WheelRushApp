@@ -159,6 +159,59 @@
     /* Form group divider */
     .form-group{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
     .form-group-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#bbb;margin-bottom:12px}
+
+    /* Compact header */
+    .header-compact{background:#111;color:#fff;padding:8px 14px;padding-top:calc(8px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
+    .header-compact h1{font-size:16px;font-weight:700;line-height:1}
+    .header-compact p{font-size:10px;color:#555;margin-top:1px}
+    /* Auth premium */
+    .auth-field{margin-bottom:14px}
+    .auth-label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#444;margin-bottom:8px}
+    .auth-inp2{width:100%;background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 18px;color:#fff;font-size:17px;outline:none;font-family:"IBM Plex Sans",sans-serif;transition:border-color .15s}
+    .auth-inp2::placeholder{color:#333}
+    .auth-inp2:focus{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.09)}
+    .auth-btn-main{width:100%;background:#fff;color:#111;border:none;border-radius:14px;padding:17px;font-size:16px;font-weight:700;font-family:"IBM Plex Sans",sans-serif;margin-bottom:10px}
+    .auth-btn-main:active{opacity:.85}
+    .auth-btn-google{width:100%;background:rgba(255,255,255,.07);color:#fff;border:1.5px solid rgba(255,255,255,.12);border-radius:14px;padding:15px;font-size:15px;font-weight:600;font-family:"IBM Plex Sans",sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px}
+    .auth-btn-google:active{opacity:.8}
+    /* QuickQuote v2 */
+    .qq-suggested{text-align:center;padding:14px 10px 10px;border-bottom:1px solid rgba(255,255,255,.07)}
+    .qq-suggested-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#555;margin-bottom:4px}
+    .qq-suggested-price{font-family:"IBM Plex Mono",monospace;font-size:34px;font-weight:700;color:#fff;line-height:1}
+    .qq-dec-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;margin-top:8px}
+    .qq-dec-badge.take{background:#dcfce7;color:#166534}
+    .qq-dec-badge.raise{background:#fef9c3;color:#854d0e}
+    .qq-dec-badge.low{background:#fee2e2;color:#b91c1c}
+    .qq-apply-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:10px}
+    .qq-apply-btn{border:none;border-radius:10px;padding:9px 4px;font-size:11px;font-weight:700;font-family:"IBM Plex Sans",sans-serif;cursor:pointer;line-height:1.3}
+    .qq-apply-btn:active{opacity:.8}
+    .qq-apply-btn.suggested{background:#4ade80;color:#14532d}
+    .qq-apply-btn.premium{background:#fb923c;color:#431407}
+    .qq-apply-btn.custom{background:rgba(255,255,255,.1);color:#fff}
+    .qq-breakdown{padding:0 12px 10px;display:flex;gap:8px;justify-content:space-between}
+    .qq-stat{text-align:center;flex:1}
+    .qq-stat-val{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:700;color:#aaa}
+    .qq-stat-lbl{font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+    /* More Details toggle */
+    .more-toggle{width:100%;background:none;border:1.5px dashed #e3e3e3;border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:#888;font-family:"IBM Plex Sans",sans-serif;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+    .more-toggle:active{background:#f9f9f9}
+    /* Tighter pay buttons */
+    .pay-btn-tight{border:1.5px solid #e3e3e3;border-radius:10px;padding:7px 4px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;font-weight:700;color:#666;transition:all .12s}
+    .pay-btn-tight.active{border-color:#111;background:#111;color:#fff}
+    .pay-btn-tight .pay-icon{font-size:16px}
+    /* Better sticky save */
+    .sticky-save2{position:sticky;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #111;padding:10px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:10px;z-index:50;box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+    /* Edit banner */
+    .edit-banner{background:#fef9c3;border:1.5px solid #fde047;border-radius:12px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .edit-banner-text{font-size:13px;font-weight:700;color:#854d0e}
+    /* Customer cards */
+    .customer-card{background:#fff;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:8px}
+    .customer-avatar{width:44px;height:44px;border-radius:12px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;font-family:"IBM Plex Mono",monospace}
+    .customer-main{flex:1;min-width:0}
+    .customer-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .customer-meta{font-size:11px;color:#999;margin-top:2px}
+    .customer-right{text-align:right;flex-shrink:0}
+
     @media(max-width:375px){
       .field-row{grid-template-columns:1fr}
       .mini-grid{grid-template-columns:repeat(2,1fr)}
@@ -421,62 +474,102 @@ function CityInput({value, onChange}) {
 }
 
 // ── QUICK QUOTE ENGINE ─────────────────────────────────────────────────────────
-function QuickQuote({form, settings, weekGross}) {
-  const directCost = jobDirectCost(form, settings);
-  const suggested  = suggestedPrice(form, settings);
-  const entered    = Number(form.revenue||0);
-  const priceToUse = entered || suggested;
-  const profit     = r2(priceToUse - directCost);
-  const dec        = jobDecision({...form, revenue:priceToUse}, settings, weekGross);
-  const isRepl     = /replacement|installation/i.test(form.service||'');
-  const minPrice   = Math.ceil((directCost + (isRepl?95:80) + premiums(form))/5)*5;
-  const maxPrice   = Math.ceil((directCost + (isRepl?130:105) + premiums(form))/5)*5;
-  const prem       = premiums(form);
-
+function QuickQuote({form, settings, weekGross, onApply}) {
+  const directCost  = jobDirectCost(form, settings);
+  const suggested   = suggestedPrice(form, settings);
+  const entered     = Number(form.revenue||0);
+  const priceToUse  = entered || suggested;
+  const profit      = r2(priceToUse - directCost);
+  const isRepl      = /replacement|installation/i.test(form.service||'');
+  const premiumPrice= Math.ceil((directCost + (isRepl?130:105) + premiums(form))/5)*5;
+  const prem        = premiums(form);
+  const skip        = Number(settings.skipThreshold||70);
+  const decBadge    = profit<skip?{label:'Too Low',cls:'low'}:profit<skip+30?{label:'Raise Price',cls:'raise'}:{label:'Take It ✓',cls:'take'};
   return (
     <div className="quote-box">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <div>
-          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.7px',color:'#555',marginBottom:3}}>Quick Quote</div>
-          <div style={{fontSize:11,color:'#444'}}>{isRepl?'Replacement':'Repair'} · target ${isRepl?'100–120':'85–100'} profit</div>
-        </div>
-        <div className={`dec-badge ${dec.cls}`}>{dec.label}</div>
+      <div className="qq-suggested">
+        <div className="qq-suggested-label">Suggested Price</div>
+        <div className="qq-suggested-price">{money(suggested)}</div>
+        <div style={{marginTop:4}}><span className={`qq-dec-badge ${decBadge.cls}`}>{decBadge.label}</span></div>
       </div>
-
-      {/* Price range */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
-        {[['Min',minPrice,'#555'],['Suggested',suggested,'#4ade80'],['Premium',maxPrice,'#fb923c']].map(([l,v,c])=>(
-          <div key={l} style={{background:'rgba(255,255,255,.06)',borderRadius:10,padding:'10px 8px',textAlign:'center'}}>
-            <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#666',marginBottom:4}}>{l}</div>
-            <div style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:c}}>{money(v)}</div>
-          </div>
-        ))}
+      <div className="qq-apply-row">
+        <button className="qq-apply-btn suggested" onClick={()=>onApply(suggested)}>Apply Suggested<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(suggested)}</span></button>
+        <button className="qq-apply-btn premium" onClick={()=>onApply(premiumPrice)}>Apply Premium<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(premiumPrice)}</span></button>
+        <button className="qq-apply-btn custom" onClick={()=>onApply(null)}>Custom Price<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>Enter →</span></button>
       </div>
-
-      {/* Breakdown */}
-      <div className="quote-row"><span style={{color:'#666'}}>Direct Cost</span><span style={{color:'#888',fontFamily:'"IBM Plex Mono",monospace'}}>{money(directCost)}</span></div>
-      {prem>0 && <div className="quote-row"><span style={{color:'#666'}}>Surcharges</span><span style={{color:'#fb923c',fontFamily:'"IBM Plex Mono",monospace'}}>+{money(prem)}</span></div>}
-      <div className="quote-row">
-        <span style={{color:profit>=60?'#4ade80':'#ef4444',fontWeight:700}}>Est. Profit {entered?'(entered)':'(suggested)'}</span>
-        <span style={{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:profit>=60?'#4ade80':'#ef4444'}}>{money(profit)}</span>
+      <div className="qq-breakdown">
+        <div className="qq-stat"><div className="qq-stat-val">{money(directCost)}</div><div className="qq-stat-lbl">Cost</div></div>
+        <div className="qq-stat"><div className="qq-stat-val" style={{color:profit>=skip?'#4ade80':'#ef4444'}}>{money(profit)}</div><div className="qq-stat-lbl">Profit</div></div>
+        {prem>0&&<div className="qq-stat"><div className="qq-stat-val" style={{color:'#fb923c'}}>+{money(prem)}</div><div className="qq-stat-lbl">Surcharge</div></div>}
       </div>
-      <div style={{fontSize:10,color:'#333',marginTop:6,lineHeight:1.7}}>{dec.reason}</div>
     </div>
   );
 }
 
 // ── AUTH SCREEN ────────────────────────────────────────────────────────────────
 function AuthScreen({onAuth}){
-  const [email,setEmail]=useState('');const [pass,setPass]=useState('');const [mode,setMode]=useState('login');const [err,setErr]=useState('');const [busy,setBusy]=useState(false);
-  const submit=async()=>{if(!email||!pass){setErr('Enter email and password.');return;}setBusy(true);setErr('');try{const c=mode==='login'?await _auth.signInWithEmailAndPassword(email,pass):await _auth.createUserWithEmailAndPassword(email,pass);onAuth(c.user);}catch(e){setErr(e.message||'Auth failed.');}finally{setBusy(false);}};
+  const [email,setEmail]=useState('');
+  const [pass,setPass]=useState('');
+  const [mode,setMode]=useState('login');
+  const [err,setErr]=useState('');
+  const [busy,setBusy]=useState(false);
+  const submit=async()=>{
+    if(!email||!pass){setErr('Enter your email and password.');return;}
+    setBusy(true);setErr('');
+    try{const c=mode==='login'?await _auth.signInWithEmailAndPassword(email,pass):await _auth.createUserWithEmailAndPassword(email,pass);onAuth(c.user);}
+    catch(e){setErr(e.message||'Auth failed.');}
+    finally{setBusy(false);}
+  };
   const google=async()=>{try{const c=await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());onAuth(c.user);}catch(e){setErr(e.message);}};
-  return(<div className="auth-screen"><img src={LOGO_SRC} alt="WR" style={{width:72,height:72,objectFit:'contain',borderRadius:16,marginBottom:16,background:'#222'}}/><div className="auth-title">Wheel Rush</div><div style={{color:'#aaa',fontSize:13,marginBottom:4,fontWeight:600}}>Mobile Tire Repair · Miami</div><div className="auth-sub">Sign in to sync across devices</div>{err&&<div style={{background:'#fee2e2',color:'#b91c1c',padding:'10px 14px',borderRadius:10,fontSize:13,fontWeight:600,marginBottom:12,width:'100%'}}>{err}</div>}<input className="auth-inp" type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="auth-inp" type="password" placeholder="Password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}/><button className="btn primary" style={{width:'100%',marginBottom:10}} onClick={submit} disabled={busy}>{busy?'Working…':mode==='login'?'Sign In':'Create Account'}</button><button className="btn secondary" style={{width:'100%',marginBottom:14}} onClick={google}>Sign in with Google</button><button style={{background:'none',border:'none',color:'#555',fontSize:13,cursor:'pointer'}} onClick={()=>setMode(m=>m==='login'?'signup':'login')}>{mode==='login'?"Don't have an account? Sign up":"Already have an account? Sign in"}</button></div>);
+  return(
+    <div style={{height:'100%',display:'flex',flexDirection:'column',background:'#0a0a0a',padding:'0 24px',paddingTop:'env(safe-area-inset-top)'}}>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',paddingBottom:16}}>
+        <img src={LOGO_SRC} alt="Wheel Rush" onError={e=>e.target.style.display='none'}
+          style={{width:84,height:84,objectFit:'contain',borderRadius:20,marginBottom:20,border:'1px solid #222'}}/>
+        <div style={{color:'#fff',fontSize:26,fontWeight:700,letterSpacing:'-.3px',marginBottom:4}}>Wheel Rush</div>
+        <div style={{color:'#555',fontSize:13,fontWeight:600}}>Mobile Tire Repair · Miami</div>
+      </div>
+      <div style={{paddingBottom:'calc(32px + env(safe-area-inset-bottom))'}}>
+        {err&&<div style={{background:'rgba(220,38,38,.15)',border:'1px solid rgba(220,38,38,.3)',color:'#f87171',padding:'12px 16px',borderRadius:12,fontSize:13,fontWeight:600,marginBottom:16,lineHeight:1.4}}>{err}</div>}
+        <div className="auth-field">
+          <label className="auth-label">Email</label>
+          <input className="auth-inp2" type="email" placeholder="you@email.com" value={email} onChange={e=>setEmail(e.target.value)} autoCapitalize="off" autoCorrect="off"/>
+        </div>
+        <div className="auth-field" style={{marginBottom:20}}>
+          <label className="auth-label">Password</label>
+          <input className="auth-inp2" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()}/>
+        </div>
+        <button className="auth-btn-main" onClick={submit} disabled={busy}>{busy?'Working…':mode==='login'?'Sign In':'Create Account'}</button>
+        <button className="auth-btn-google" onClick={google}>
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+          Continue with Google
+        </button>
+        <div style={{textAlign:'center'}}>
+          <button style={{background:'none',border:'none',color:'#444',fontSize:13,cursor:'pointer',padding:'8px'}} onClick={()=>{setMode(m=>m==='login'?'signup':'login');setErr('');}}>
+            {mode==='login'?"New here? Create account":"Have an account? Sign in"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── HEADER ──────────────────────────────────────────────────────────────────────
 function Header({settings,syncStatus,onSignOut}){
-  const badge=syncStatus==='connected'?<span className="badge green">● Synced</span>:syncStatus==='syncing'?<span className="badge dark syncing">↻ Syncing</span>:<span className="badge dark">○ Local</span>;
-  return(<div className="header"><div style={{display:'flex',alignItems:'center',gap:10}}><img src={LOGO_SRC} alt="Logo" style={{width:40,height:40,objectFit:'contain',borderRadius:9,flexShrink:0,background:'#222'}}/><div><h1>Wheel Rush</h1><p>Mobile Tire Repair · 305-897-7030</p></div></div><div style={{display:'flex',alignItems:'center',gap:8}}>{badge}{onSignOut&&<button onClick={onSignOut} style={{background:'none',border:'none',color:'#444',fontSize:11,cursor:'pointer'}}>Sign out</button>}</div></div>);
+  const dot=syncStatus==='connected'?'#4ade80':syncStatus==='syncing'?'#666':'#333';
+  const lbl=syncStatus==='connected'?'Live':syncStatus==='syncing'?'↻':'Local';
+  return(
+    <div className="header-compact">
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <img src={LOGO_SRC} alt="WR" style={{width:32,height:32,objectFit:'contain',borderRadius:7,flexShrink:0}} onError={e=>e.target.style.display='none'}/>
+        <div><h1>Wheel Rush</h1><p>Mobile Tire Repair · 305-897-7030</p></div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        <span style={{fontSize:10,fontWeight:700,color:dot,userSelect:'none'}} className={syncStatus==='syncing'?'syncing':''}>● {lbl}</span>
+        {onSignOut&&<button onClick={onSignOut} style={{background:'none',border:'none',color:'#444',fontSize:11,cursor:'pointer',padding:'4px 6px'}}>Out</button>}
+      </div>
+    </div>
+  );
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────────────────────────
