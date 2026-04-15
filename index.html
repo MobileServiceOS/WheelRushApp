@@ -2606,68 +2606,81 @@ function App() {
   const [settings,  setSettings]  = useState({});
 
   const authRef   = useRef(false);
-  const authUnsub = useRef(null);  // kept separate — never cleared by Firestore effect
-  const unsubRef  = useRef([]);    // Firestore listeners only
+  const unsubRef  = useRef([]);   // Firestore listeners
 
-  // ── Auth ─────────────────────────────────────────────────────────────────
+  // ── Single init effect: wait for Firebase SDK, then attach auth ──────────
+  // Auth onAuthStateChanged fires once immediately with current user (or null).
+  // Only after that do we attach Firestore listeners.
+  // We poll for _auth/_db every 100ms so we never miss the case where Firebase
+  // CDN scripts finish loading AFTER React has mounted.
   useEffect(()=>{
+    let authUnsub = null;
     let cancelled = false;
-    const timer = setTimeout(()=>{
-      if(cancelled) return;
-      setAuthErr('Firebase unavailable. Open at your deployed URL.');
-      setReady(true);
-    }, 10000);
 
-    const attach = () => {
-      if(!_auth){ setTimeout(attach, 100); return; }
-      // Auth unsub stored separately — Firestore effect must not touch it
-      authUnsub.current = _auth.onAuthStateChanged(u => {
+    // Timeout shown if Firebase never responds (blocked CDN, etc.)
+    const giveUp = setTimeout(()=>{
+      if(cancelled) return;
+      setAuthErr('Firebase unavailable. Open the app at your deployed URL.');
+      setReady(true);
+    }, 12000);
+
+    // Teardown all Firestore listeners cleanly
+    const teardown = () => {
+      unsubRef.current.forEach(fn=>{ try{fn();}catch{} });
+      unsubRef.current = [];
+    };
+
+    // Attach Firestore real-time listeners for a signed-in user
+    const attachFirestore = (u) => {
+      teardown();
+      if(!u || !_db) return;
+      setSync('syncing');
+      const u1 = listen(COL.jobs(),      docs=>{ setJobs(docs); setSync('online'); });
+      const u2 = listen(COL.customers(), docs=>setCustomers(docs));
+      const u3 = listen(COL.vehicles(),  docs=>setVehicles(docs));
+      const u4 = listen(COL.invoices(),  docs=>setInvoices(docs));
+      const u5 = listen(COL.expenses(),  docs=>setExpenses(docs));
+      const u6 = listen(COL.payouts(),   docs=>setPayouts(docs));
+      const sRef = COL.settings();
+      const u7 = sRef ? sRef.onSnapshot(
+        snap => {
+          if(snap.exists) setSettings(snap.data());
+          else sRef.set({createdAt:new Date().toISOString()}).catch(()=>{});
+        },
+        () => {}
+      ) : null;
+      unsubRef.current = [u1,u2,u3,u4,u5,u6,u7].filter(Boolean);
+    };
+
+    // Poll until both _auth and _db are ready, then subscribe
+    const init = () => {
+      if(cancelled) return;
+      if(!_auth || !_db) { setTimeout(init, 100); return; }
+      clearTimeout(giveUp);
+      authUnsub = _auth.onAuthStateChanged(u => {
         if(cancelled) return;
-        clearTimeout(timer);
         authRef.current = !!u;
         setUser(u || null);
         setSync(u ? 'syncing' : 'offline');
         setReady(true);
+        attachFirestore(u);
+        if(!u) {
+          setJobs([]); setCustomers([]); setVehicles([]);
+          setInvoices([]); setExpenses([]); setPayouts([]); setSettings({});
+        }
       });
     };
-    attach();
+    init();
+
     return () => {
       cancelled = true;
-      clearTimeout(timer);
-      if(authUnsub.current) { authUnsub.current(); authUnsub.current = null; }
+      clearTimeout(giveUp);
+      if(authUnsub) authUnsub();
+      teardown();
     };
-  }, []);
+  }, []); // runs once on mount
 
-  // ── Firestore listeners ───────────────────────────────────────────────────
-  useEffect(()=>{
-    unsubRef.current.forEach(fn=>{ try{fn();}catch{} });
-    unsubRef.current = [];
-    if(!user||!_db) return;
-    setSync('syncing');
-
-    const u1 = listen(COL.jobs(), docs=>{ setJobs(docs); setSync('online'); });
-    const u2 = listen(COL.customers(), docs=>setCustomers(docs));
-    const u3 = listen(COL.vehicles(),  docs=>setVehicles(docs));
-    const u5 = listen(COL.invoices(),  docs=>setInvoices(docs));
-    const u6 = listen(COL.expenses(),  docs=>setExpenses(docs));
-    const u7 = listen(COL.payouts(),   docs=>setPayouts(docs));
-    const settingsRef = COL.settings();
-    const u4 = settingsRef ? settingsRef.onSnapshot(snap=>{
-      if(snap.exists) setSettings(snap.data());
-      else settingsRef.set({createdAt:new Date().toISOString()}).catch(()=>{});
-    }, ()=>{}) : null;
-
-    unsubRef.current = [u1,u2,u3,u5,u6,u7,u4].filter(Boolean);
-    return () => { unsubRef.current.forEach(fn=>{ try{fn();}catch{} }); unsubRef.current=[]; };
-  }, [user]);
-
-  const signOut = useCallback(async ()=>{
-    try{ await _auth?.signOut(); }catch{}
-    authRef.current=false;
-    setUser(null); setSync('offline');
-    setJobs([]); setCustomers([]); setVehicles([]); setInvoices([]);
-    setExpenses([]); setPayouts([]); setSettings({});
-  }, []);
+  const signOut = useCallback(async ()=>{\n    try{ await _auth?.signOut(); }catch{}\n    authRef.current = false;\n    setUser(null); setSync('offline');\n    // listeners cleaned up automatically by onAuthStateChanged firing null\n  }, []);
 
   const openNewJob = useCallback((init={})=>{
     setJobInit(init);
