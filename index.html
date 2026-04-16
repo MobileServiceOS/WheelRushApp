@@ -301,7 +301,6 @@ const PAYMENT_OPTIONS = [{label:'Cash',icon:'💵'},{label:'Zelle',icon:'🟣'},
 
 // ── FULL CITY LIST — Miami-Dade + Broward ─────────────────────────────────────
 const CITY_LIST = [
-  // Miami-Dade
   'Miami','Miami Beach','North Miami','North Miami Beach','Miami Gardens','Hialeah',
   'Hialeah Gardens','Opa-locka','Aventura','Sunny Isles Beach','Bal Harbour',
   'Bay Harbor Islands','Surfside','El Portal','Biscayne Park','Golden Beach',
@@ -310,7 +309,6 @@ const CITY_LIST = [
   'Cutler Bay','Homestead','Florida City','Kendall','West Kendall','Tamiami',
   'Fontainebleau','Westchester','Olympia Heights','Richmond Heights',
   'Country Walk','Three Lakes','Naranja','Princeton','Goulds',
-  // Broward
   'Fort Lauderdale','Hollywood','Pembroke Pines','Miramar','Davie','Plantation',
   'Sunrise','Weston','Tamarac','Coral Springs','Parkland','Coconut Creek',
   'Margate','North Lauderdale','Lauderhill','Lauderdale Lakes','Wilton Manors',
@@ -358,6 +356,8 @@ const weeklyFixed    = s=>r2((s.expenses||[]).filter(e=>e.active).reduce((t,e)=>
 const monthlyFixed   = s=>(s.expenses||[]).filter(e=>e.active).reduce((t,e)=>t+Number(e.amount||0),0);
 function premiums(j){let p=0;if(j.emergency)p+=20;if(j.lateNight)p+=20;if(j.highway)p+=15;if(j.weekend)p+=10;if(Number(j.miles||0)>25)p+=20;return p;}
 function suggestedPrice(j,s){const direct=jobDirectCost(j,s);const isRepl=/replacement|installation/i.test(j.service||'');const target=isRepl?Number(s.replacementTarget||110):Number(s.repairTarget||90);return Math.ceil((direct+target+premiums(j))/5)*5;}
+
+// CHANGE #4 — labels: Too Low / Take It / Strong Margin
 function jobDecision(j,s,weekGP=0){
   const rev=Number(j.revenue||0)||suggestedPrice(j,s);
   const profit=r2(rev-jobDirectCost(j,s));
@@ -365,64 +365,62 @@ function jobDecision(j,s,weekGP=0){
   const miles=Number(j.miles||0);
   const goal=Number(s.weeklyGoal||1200);
   const goalPct=goal>0?weekGP/goal:0;
-  if(profit<skip)return{label:'Skip — Too Low',cls:'low',reason:`Profit ${money(profit)} below min ${money(skip)}`};
-  if(goalPct>=1.0&&miles>Number(s.riskyMiles||25))return{label:'Skip — Goal Hit',cls:'low',reason:`Already at goal — skip the distance`};
-  if(miles>Number(s.riskyMiles||25)){const adj=goalPct<0.5?skip-15:skip;if(profit<adj+30)return{label:'Risky',cls:'okay',reason:`${miles} mi + thin margin`};}
-  if(profit>=skip+40)return{label:'Strong — Take It',cls:'strong',reason:`${money(profit)} profit`};
-  return{label:'Okay — Take It',cls:'okay',reason:`Profit ${money(profit)}`};
+  if(profit<skip)return{label:'Too Low',cls:'low',dec:'low',reason:`Profit ${money(profit)} below min ${money(skip)}`};
+  if(goalPct>=1.0&&miles>Number(s.riskyMiles||25))return{label:'Too Low',cls:'low',dec:'low',reason:`Goal hit — skip the drive`};
+  if(miles>Number(s.riskyMiles||25)){const adj=goalPct<0.5?skip-15:skip;if(profit<adj+30)return{label:'Take It',cls:'okay',dec:'okay',reason:`${miles} mi — watch margin`};}
+  if(profit>=skip+40)return{label:'Strong Margin',cls:'strong',dec:'strong',reason:`${money(profit)} profit`};
+  return{label:'Take It',cls:'okay',dec:'okay',reason:`${money(profit)} profit`};
 }
-function weekSummary(weekJobs,s){const revenue=r2(weekJobs.reduce((t,j)=>t+Number(j.revenue||0),0));const directCosts=r2(weekJobs.reduce((t,j)=>t+jobDirectCost(j,s),0));const grossProfit=r2(revenue-directCosts);const fixed=weeklyFixed(s);const net=r2(grossProfit-fixed);return{revenue,directCosts,grossProfit,fixed,net,jobCount:weekJobs.length};}
+
+function weekSummary(weekJobs,s){
+  const safeJobs=Array.isArray(weekJobs)?weekJobs:[];
+  const revenue=r2(safeJobs.reduce((t,j)=>t+Number(j.revenue||0),0));
+  const directCosts=r2(safeJobs.reduce((t,j)=>t+jobDirectCost(j,s),0));
+  const grossProfit=r2(revenue-directCosts);
+  const fixed=weeklyFixed(s);
+  const net=r2(grossProfit-fixed);
+  return{revenue,directCosts,grossProfit,fixed,net,jobCount:safeJobs.length};
+}
 function getWeekStart(d){const dt=new Date(d+'T00:00:00'),day=dt.getDay();dt.setDate(dt.getDate()-(day>=5?day-5:day+2));return dt.toISOString().slice(0,10);}
-function weekLabel(s){const d=new Date(s+'T00:00:00'),e=new Date(d);e.setDate(e.getDate()+6);const f=dt=>dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});return`${f(d)} – ${f(e)}`;}
+function weekLabel(s){const d=new Date(s+'T00:00:00'),e=new Date(d);e.setDate(e.getDate()+6);const f=dt=>dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});const yr=e.getFullYear();return`${f(d)} – ${f(e)}, ${yr}`;}
 function nextFriday(){const d=new Date(),diff=d.getDay()===5?7:(5-d.getDay()+7)%7;d.setDate(d.getDate()+diff);return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
-function groupByWeek(jobs){const map={};[...jobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).forEach(j=>{const k=getWeekStart(j.date);if(!map[k])map[k]=[];map[k].push(j);});return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));}
+function groupByWeek(jobs){const map={};[...(Array.isArray(jobs)?jobs:[])].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).forEach(j=>{const k=getWeekStart(j.date);if(!map[k])map[k]=[];map[k].push(j);});return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));}
 
 function exportCSV(jobs,settings){
   const headers=['Date','Service','Area','Source','Revenue','Tire Cost','Misc Cost','Miles','Direct Cost','Gross Profit','Payment','Tire Size','Qty','Customer','Phone','Notes'];
-  const rows=[...jobs].sort((a,b)=>a.date.localeCompare(b.date)).map(j=>{const dc=jobDirectCost(j,settings);const gp=jobGrossProfit(j,settings);return[j.date,j.service,j.area,j.source||'',Number(j.revenue||0).toFixed(2),Number(j.tireCost||0).toFixed(2),Number(j.miscCost||0).toFixed(2),Number(j.miles||0).toFixed(1),dc.toFixed(2),gp.toFixed(2),j.payment,j.tireSize||'',j.qty||1,j.customerName||'',j.customerPhone||'',(j.note||'').replace(/,/g,' ')].map(v=>`"${v}"`).join(',');});
+  const rows=[...(Array.isArray(jobs)?jobs:[])].sort((a,b)=>a.date.localeCompare(b.date)).map(j=>{const dc=jobDirectCost(j,settings);const gp=jobGrossProfit(j,settings);return[j.date,j.service,j.area,j.source||'',Number(j.revenue||0).toFixed(2),Number(j.tireCost||0).toFixed(2),Number(j.miscCost||0).toFixed(2),Number(j.miles||0).toFixed(1),dc.toFixed(2),gp.toFixed(2),j.payment,j.tireSize||'',j.qty||1,j.customerName||'',j.customerPhone||'',(j.note||'').replace(/,/g,' ')].map(v=>`"${v}"`).join(',');});
   const csv=[headers.join(','),...rows].join('\n');const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`wheel-rush-${TODAY()}.csv`;a.click();URL.revokeObjectURL(url);
 }
 
 // ── Shared UI ──────────────────────────────────────────────────────────────────
 function EmptyState({icon,title,sub,action}){return(<div className="empty"><div className="empty-icon">{icon}</div><div className="empty-title">{title}</div>{sub&&<div className="empty-sub">{sub}</div>}{action&&<div style={{marginTop:18}}>{action}</div>}</div>);}
 
-// ── CITY INPUT (searchable, replaces dropdown) ─────────────────────────────────
+// ── CITY INPUT ─────────────────────────────────────────────────────────────────
 function CityInput({value, onChange}) {
-  const [q, setQ]       = useState(value || '');
-  const [open, setOpen]  = useState(false);
-  const inputRef         = useRef(null);
-  const recentCities     = useMemo(()=>load(KEYS.cities,[]).slice(0,6),[]);
-
+  const [q, setQ]      = useState(value || '');
+  const [open, setOpen] = useState(false);
+  const inputRef        = useRef(null);
+  const recentCities    = useMemo(()=>load(KEYS.cities,[]).slice(0,6),[]);
   useEffect(()=>{ setQ(value||''); },[value]);
-
   const matches = useMemo(()=>{
     if(!q.trim()) return [];
     const lq=q.toLowerCase();
     return CITY_LIST.filter(c=>c.toLowerCase().includes(lq)).slice(0,12);
   },[q]);
-
   const pick = c => {
-    onChange(c);
-    setQ(c);
-    setOpen(false);
-    // Save to recent cities
+    onChange(c); setQ(c); setOpen(false);
     const recents=load(KEYS.cities,[]).filter(x=>x!==c);
     persist(KEYS.cities,[c,...recents].slice(0,8));
     inputRef.current?.blur();
   };
-
   return (
     <div className="city-input-wrap">
-      <input
-        ref={inputRef}
-        value={q}
+      <input ref={inputRef} value={q}
         onChange={e=>{ setQ(e.target.value); onChange(e.target.value); setOpen(true); }}
-        onFocus={()=>setOpen(true)}
-        onBlur={()=>setTimeout(()=>setOpen(false),200)}
+        onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),200)}
         placeholder="Type a city…"
         style={{width:'100%',border:'1.5px solid #e3e3e3',background:'#fff',borderRadius:12,padding:'12px 14px',outline:'none',fontSize:16,transition:'border-color .15s'}}
       />
-      {/* Quick city chips — show when not searching */}
       {!open && !q && (
         <div className="chip-row" style={{marginTop:8}}>
           {TOP_CITIES.slice(0,6).map(c=>(
@@ -430,7 +428,6 @@ function CityInput({value, onChange}) {
           ))}
         </div>
       )}
-      {/* Recent cities chips */}
       {!open && !q && recentCities.length>0 && (
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:6}}>
           {recentCities.filter(c=>!TOP_CITIES.slice(0,6).includes(c)).map(c=>(
@@ -440,32 +437,17 @@ function CityInput({value, onChange}) {
           ))}
         </div>
       )}
-      {/* Dropdown results */}
       {open && (q ? matches.length>0 : true) && (
         <div className="city-dropdown">
           {!q && recentCities.length>0 && <>
             <div className="city-section-head">Recent</div>
-            {recentCities.map(c=>(
-              <div key={c} className="city-option" onMouseDown={()=>pick(c)}>
-                <span>🕐</span>{c}
-              </div>
-            ))}
+            {recentCities.map(c=>(<div key={c} className="city-option" onMouseDown={()=>pick(c)}><span>🕐</span>{c}</div>))}
             <div className="city-section-head">Quick picks</div>
-            {TOP_CITIES.map(c=>(
-              <div key={c} className="city-option" onMouseDown={()=>pick(c)}>
-                <span>📍</span>{c}
-              </div>
-            ))}
+            {TOP_CITIES.map(c=>(<div key={c} className="city-option" onMouseDown={()=>pick(c)}><span>📍</span>{c}</div>))}
           </>}
-          {q && matches.map(c=>(
-            <div key={c} className="city-option" onMouseDown={()=>pick(c)}>
-              <span>📍</span>{c}
-            </div>
-          ))}
+          {q && matches.map(c=>(<div key={c} className="city-option" onMouseDown={()=>pick(c)}><span>📍</span>{c}</div>))}
           {q && matches.length===0 && (
-            <div className="city-option" style={{color:'#999'}} onMouseDown={()=>pick(q)}>
-              Use "<strong>{q}</strong>" →
-            </div>
+            <div className="city-option" style={{color:'#999'}} onMouseDown={()=>pick(q)}>Use "<strong>{q}</strong>" →</div>
           )}
         </div>
       )}
@@ -474,7 +456,14 @@ function CityInput({value, onChange}) {
 }
 
 // ── QUICK QUOTE ENGINE ─────────────────────────────────────────────────────────
-function QuickQuote({form, settings, weekGross, onApply}) {
+// CHANGE #1: Show Cost + Profit prominently under suggested price
+// CHANGE #2: "Enter job details" when miles/tireCost/miscCost all empty
+// CHANGE #3: Apply buttons update revenue field instantly (onApply + onFormChange)
+// CHANGE #9: Inputs for miles, tireCost, miscCost, qty INSIDE the card
+function QuickQuote({form, settings, weekGross, onApply, onFormChange}) {
+  // CHANGE #2 — detect if any cost inputs have been entered
+  const hasInputs = Number(form.miles||0) > 0 || Number(form.tireCost||0) > 0 || Number(form.miscCost||0) > 0;
+
   const directCost  = jobDirectCost(form, settings);
   const suggested   = suggestedPrice(form, settings);
   const entered     = Number(form.revenue||0);
@@ -484,24 +473,100 @@ function QuickQuote({form, settings, weekGross, onApply}) {
   const premiumPrice= Math.ceil((directCost + (isRepl?130:105) + premiums(form))/5)*5;
   const prem        = premiums(form);
   const skip        = Number(settings.skipThreshold||70);
-  const decBadge    = profit<skip?{label:'Too Low',cls:'low'}:profit<skip+30?{label:'Raise Price',cls:'raise'}:{label:'Take It ✓',cls:'take'};
+
+  // CHANGE #4 — decision labels
+  const decBadge = profit<skip
+    ? {label:'Too Low',cls:'low'}
+    : profit>=skip+40
+      ? {label:'Strong Margin',cls:'take'}
+      : {label:'Take It',cls:'take'};
+
+  // Inline input style for dark card
+  const inpStyle = {
+    background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.15)',
+    borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:15,outline:'none',
+    width:'100%',fontFamily:'"IBM Plex Mono",monospace',fontWeight:600,
+    textAlign:'center',
+  };
+  const inpLbl = {fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.6px',color:'#555',marginBottom:5,textAlign:'center'};
+
   return (
     <div className="quote-box">
-      <div className="qq-suggested">
-        <div className="qq-suggested-label">Suggested Price</div>
-        <div className="qq-suggested-price">{money(suggested)}</div>
-        <div style={{marginTop:4}}><span className={`qq-dec-badge ${decBadge.cls}`}>{decBadge.label}</span></div>
+
+      {/* CHANGE #9 — inline inputs inside card */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
+        <div>
+          <div style={inpLbl}>Miles</div>
+          <input type="number" min="0" inputMode="decimal" placeholder="0"
+            value={form.miles||''} onChange={e=>onFormChange('miles',e.target.value)} style={inpStyle}/>
+        </div>
+        <div>
+          <div style={inpLbl}>Tire $</div>
+          <input type="number" min="0" inputMode="decimal" placeholder="0"
+            value={form.tireCost||''} onChange={e=>onFormChange('tireCost',e.target.value)} style={inpStyle}/>
+        </div>
+        <div>
+          <div style={inpLbl}>Misc $</div>
+          <input type="number" min="0" inputMode="decimal" placeholder="0"
+            value={form.miscCost||''} onChange={e=>onFormChange('miscCost',e.target.value)} style={inpStyle}/>
+        </div>
+        <div>
+          <div style={inpLbl}>Qty</div>
+          <input type="number" min="1" inputMode="numeric" placeholder="1"
+            value={form.qty||''} onChange={e=>onFormChange('qty',e.target.value)} style={inpStyle}/>
+        </div>
       </div>
-      <div className="qq-apply-row">
-        <button className="qq-apply-btn suggested" onClick={()=>onApply(suggested)}>Apply Suggested<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(suggested)}</span></button>
-        <button className="qq-apply-btn premium" onClick={()=>onApply(premiumPrice)}>Apply Premium<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(premiumPrice)}</span></button>
-        <button className="qq-apply-btn custom" onClick={()=>onApply(null)}>Custom Price<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>Enter →</span></button>
-      </div>
-      <div className="qq-breakdown">
-        <div className="qq-stat"><div className="qq-stat-val">{money(directCost)}</div><div className="qq-stat-lbl">Cost</div></div>
-        <div className="qq-stat"><div className="qq-stat-val" style={{color:profit>=skip?'#4ade80':'#ef4444'}}>{money(profit)}</div><div className="qq-stat-lbl">Profit</div></div>
-        {prem>0&&<div className="qq-stat"><div className="qq-stat-val" style={{color:'#fb923c'}}>+{money(prem)}</div><div className="qq-stat-lbl">Surcharge</div></div>}
-      </div>
+
+      {/* CHANGE #2 — placeholder when no inputs entered */}
+      {!hasInputs ? (
+        <div style={{textAlign:'center',padding:'10px 0 4px'}}>
+          <div style={{fontSize:13,color:'#444',fontWeight:600}}>Enter job details above</div>
+          <div style={{fontSize:11,color:'#333',marginTop:4}}>Miles · Tire cost · Misc → auto-calculates</div>
+        </div>
+      ) : (
+        <>
+          {/* CHANGE #1 — Suggested Price as hero with Cost + Profit below */}
+          <div className="qq-suggested">
+            <div className="qq-suggested-label">Suggested Price</div>
+            <div className="qq-suggested-price">{money(suggested)}</div>
+            {/* Cost + Profit displayed prominently under price */}
+            <div style={{display:'flex',justifyContent:'center',gap:20,marginTop:8,marginBottom:6}}>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:11,color:'#555',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Cost</div>
+                <div style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:16,fontWeight:700,color:'#666'}}>{money(directCost)}</div>
+              </div>
+              <div style={{width:1,background:'#222',flexShrink:0}}/>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontSize:11,color:'#555',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Profit</div>
+                <div style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:16,fontWeight:700,color:profit>=skip?'#4ade80':'#ef4444'}}>{money(profit)}</div>
+              </div>
+              {prem>0&&<>
+                <div style={{width:1,background:'#222',flexShrink:0}}/>
+                <div style={{textAlign:'center'}}>
+                  <div style={{fontSize:11,color:'#555',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Surcharge</div>
+                  <div style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:16,fontWeight:700,color:'#fb923c'}}>+{money(prem)}</div>
+                </div>
+              </>}
+            </div>
+            <div style={{marginTop:4}}>
+              <span className={`qq-dec-badge ${decBadge.cls}`}>{decBadge.label}</span>
+            </div>
+          </div>
+
+          {/* CHANGE #3 — apply buttons wire to onApply which sets revenue instantly */}
+          <div className="qq-apply-row">
+            <button className="qq-apply-btn suggested" onClick={()=>onApply(String(suggested))}>
+              Apply Suggested<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(suggested)}</span>
+            </button>
+            <button className="qq-apply-btn premium" onClick={()=>onApply(String(premiumPrice))}>
+              Apply Premium<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(premiumPrice)}</span>
+            </button>
+            <button className="qq-apply-btn custom" onClick={()=>onApply('')}>
+              Custom Price<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>Enter →</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -574,9 +639,10 @@ function Header({settings,syncStatus,onSignOut}){
 
 // ── DASHBOARD ──────────────────────────────────────────────────────────────────
 function Dashboard({jobs,varExpenses,settings,setTab,onRepeat}){
+  const safeJobs=Array.isArray(jobs)?jobs:[];
   const today=TODAY(),thisWeek=getWeekStart(today);
-  const weekJobs=useMemo(()=>jobs.filter(j=>getWeekStart(j.date)===thisWeek),[jobs,thisWeek]);
-  const todayJobs=useMemo(()=>jobs.filter(j=>j.date===today),[jobs,today]);
+  const weekJobs=useMemo(()=>safeJobs.filter(j=>getWeekStart(j.date)===thisWeek),[safeJobs,thisWeek]);
+  const todayJobs=useMemo(()=>safeJobs.filter(j=>j.date===today),[safeJobs,today]);
   const totals=useMemo(()=>weekSummary(weekJobs,settings),[weekJobs,settings]);
   const avgProfit=weekJobs.length?r2(totals.grossProfit/weekJobs.length):0;
   const goalPct=clamp((totals.grossProfit/(settings.weeklyGoal||1))*100,0,100);
@@ -587,13 +653,15 @@ function Dashboard({jobs,varExpenses,settings,setTab,onRepeat}){
   const o1=totals.net>0&&ao1?r2(totals.net*(Number(settings.profitSplit1||50)/st)):0;
   const o2=totals.net>0&&ao2?r2(totals.net*(Number(settings.profitSplit2||50)/st)):0;
   const tax=totals.net>0&&settings.taxRate>0?r2(totals.net*(Number(settings.taxRate)/100)):0;
-  const sources=useMemo(()=>{const m={};jobs.forEach(j=>{const s=j.source||'Other';m[s]=(m[s]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[jobs]);
+  const sources=useMemo(()=>{const m={};safeJobs.forEach(j=>{const s=j.source||'Other';m[s]=(m[s]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[safeJobs]);
   const maxSrc=sources.length?sources[0][1]:1;
-  const repairs=useMemo(()=>jobs.filter(j=>/repair/i.test(j.service)),[jobs]);
-  const replaces=useMemo(()=>jobs.filter(j=>/replacement|installation/i.test(j.service)),[jobs]);
-  const topCities=useMemo(()=>{const m={};jobs.forEach(j=>{m[j.area]=(m[j.area]||0)+jobGrossProfit(j,settings);});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,4);},[jobs,settings]);
-  const recent=useMemo(()=>[...jobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5),[jobs]);
+  const repairs=useMemo(()=>safeJobs.filter(j=>/repair/i.test(j.service)),[safeJobs]);
+  const replaces=useMemo(()=>safeJobs.filter(j=>/replacement|installation/i.test(j.service)),[safeJobs]);
+  const topCities=useMemo(()=>{const m={};safeJobs.forEach(j=>{m[j.area]=(m[j.area]||0)+jobGrossProfit(j,settings);});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,4);},[safeJobs,settings]);
+  const recent=useMemo(()=>[...safeJobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5),[safeJobs]);
   const barColor=goalPct>=100?'full':goalPct>=50?'mid':'low';
+  // CHANGE #5 — week date range
+  const thisWeekLabel = weekLabel(thisWeek);
   return(
     <div className="screen"><div className="page">
       {todayJobs.length>0&&(<>
@@ -605,7 +673,10 @@ function Dashboard({jobs,varExpenses,settings,setTab,onRepeat}){
           <div className="mini-box"><strong>{todayJobs.length?money(todayJobs.reduce((s,j)=>s+jobGrossProfit(j,settings),0)/todayJobs.length):'—'}</strong><span>Avg/Job</span></div>
         </div>
       </>)}
-      <div className="section-label" style={{marginTop:todayJobs.length?undefined:0}}>This Week</div>
+      {/* CHANGE #5 — show week date range in label */}
+      <div className="section-label" style={{marginTop:todayJobs.length?undefined:0}}>
+        This Week <span style={{fontWeight:400,textTransform:'none',letterSpacing:0,color:'#bbb',fontSize:10}}>· {thisWeekLabel}</span>
+      </div>
       <div className="kpi-grid" style={{marginBottom:8}}>
         <div className="kpi"><div className="kpi-label">Revenue</div><div className="kpi-value">{money(totals.revenue)}</div><div className="kpi-sub">{weekJobs.length} job{weekJobs.length!==1?'s':''}</div></div>
         <div className="kpi"><div className="kpi-label">Gross Profit</div><div className="kpi-value">{money(totals.grossProfit)}</div><div className="kpi-sub">before fixed</div></div>
@@ -664,38 +735,52 @@ function Dashboard({jobs,varExpenses,settings,setTab,onRepeat}){
 }
 
 // ── ADD JOB ────────────────────────────────────────────────────────────────────
-function AddJob({onSave,settings,jobs,prefill,onClearPrefill}){
+// CHANGE #7 — edit mode: accepts editJob prop, saves with same ID
+function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit}){
   const [form,setForm]=useState(EMPTY_JOB);
   const [error,setError]=useState('');
   const [saved,setSaved]=useState(null);
   const [tick,setTick]=useState(0);
+  const isEditing=!!(editJob&&editJob.id);
   const recentSizes=useMemo(()=>[...new Set([...load(KEYS.sizes,[]),...DEFAULT_TIRE_SIZES])].slice(0,8),[tick]);
-  const weekGross=useMemo(()=>{const tw=getWeekStart(TODAY());return jobs.filter(j=>getWeekStart(j.date)===tw).reduce((s,j)=>s+jobGrossProfit(j,settings),0);},[jobs,settings]);
-  const lastJob=useMemo(()=>[...jobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))[0]||null,[jobs]);
+  const weekGross=useMemo(()=>{const tw=getWeekStart(TODAY());return (Array.isArray(jobs)?jobs:[]).filter(j=>getWeekStart(j.date)===tw&&(!isEditing||j.id!==editJob.id)).reduce((s,j)=>s+jobGrossProfit(j,settings),0);},[jobs,settings,isEditing,editJob]);
+  const lastJob=useMemo(()=>[...(Array.isArray(jobs)?jobs:[])].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).find(j=>!isEditing||j.id!==editJob?.id)||null,[jobs,isEditing,editJob]);
 
+  // Load editJob into form
   useEffect(()=>{
+    if(editJob&&editJob.id){
+      setForm({...EMPTY_JOB(),...editJob,revenue:String(editJob.revenue||''),tireCost:String(editJob.tireCost||''),miscCost:String(editJob.miscCost||''),miles:String(editJob.miles||'')});
+      setSaved(null);setError('');
+      if(onClearEdit)onClearEdit();
+      return;
+    }
     if(prefill){
-      setForm({...EMPTY_JOB(),service:prefill.service||'Tire Repair',area:prefill.area||'Miami',payment:prefill.payment||'Cash',source:prefill.source||'Google Search',tireSize:prefill.tireSize||'',qty:prefill.qty||1,tireCost:prefill.tireCost||'',miscCost:prefill.miscCost||'',miles:prefill.miles||'',emergency:!!prefill.emergency,lateNight:!!prefill.lateNight,highway:!!prefill.highway,weekend:!!prefill.weekend,customerName:prefill.customerName||'',customerPhone:prefill.customerPhone||''});
+      setForm({...EMPTY_JOB(),service:prefill.service||'Tire Repair',area:prefill.area||'Miami',payment:prefill.payment||'Cash',source:prefill.source||'Google Search',tireSize:prefill.tireSize||'',qty:prefill.qty||1,tireCost:String(prefill.tireCost||''),miscCost:String(prefill.miscCost||''),miles:String(prefill.miles||''),emergency:!!prefill.emergency,lateNight:!!prefill.lateNight,highway:!!prefill.highway,weekend:!!prefill.weekend,customerName:prefill.customerName||'',customerPhone:prefill.customerPhone||''});
       if(onClearPrefill)onClearPrefill();
     }
-  },[prefill]);
+  },[prefill,editJob]);
 
   const setF=(k,v)=>{setForm(p=>({...p,[k]:v}));setError('');};
 
   const useLastJob=()=>{
     if(!lastJob)return;
-    setForm({...EMPTY_JOB(),service:lastJob.service,area:lastJob.area,payment:lastJob.payment,source:lastJob.source,tireSize:lastJob.tireSize,tireCost:lastJob.tireCost,miscCost:lastJob.miscCost,miles:lastJob.miles,emergency:lastJob.emergency,lateNight:lastJob.lateNight,highway:lastJob.highway,weekend:lastJob.weekend});
+    setForm({...EMPTY_JOB(),service:lastJob.service,area:lastJob.area,payment:lastJob.payment,source:lastJob.source,tireSize:lastJob.tireSize,tireCost:String(lastJob.tireCost||''),miscCost:String(lastJob.miscCost||''),miles:String(lastJob.miles||''),emergency:lastJob.emergency,lateNight:lastJob.lateNight,highway:lastJob.highway,weekend:lastJob.weekend});
   };
 
   const saveJob=(andAdd=false)=>{
     const rev=Number(form.revenue||0);
     if(!rev){setError('Enter the job price.');return;}
     if(form.tireSize){try{const p=load(KEYS.sizes,[]);persist(KEYS.sizes,[form.tireSize,...p.filter(s=>s!==form.tireSize)].slice(0,10));}catch{}}
-    const entry={...form,id:uid(),qty:Number(form.qty||1),revenue:r2(rev),tireCost:r2(form.tireCost),miscCost:r2(form.miscCost),miles:r2(form.miles)};
+    // CHANGE #7 — preserve ID when editing
+    const entry={...form,id:isEditing?editJob.id:uid(),qty:Number(form.qty||1),revenue:r2(rev),tireCost:r2(form.tireCost),miscCost:r2(form.miscCost),miles:r2(form.miles)};
     onSave(entry,andAdd);
-    setTick(t=>t+1);
-    setSaved(entry);
+    setTick(t=>t+1);setSaved(entry);
     if(andAdd){setForm(EMPTY_JOB());setError('');setSaved(null);}
+  };
+
+  const cancelEdit=()=>{
+    setForm(EMPTY_JOB());setError('');setSaved(null);
+    if(onClearEdit)onClearEdit();
   };
 
   const requestReview=()=>{
@@ -710,17 +795,25 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill}){
   return(
     <div className="screen" style={{paddingBottom:0}}>
       <div style={{padding:'14px 14px 0'}}>
+
+        {/* CHANGE #7 — edit mode banner */}
+        {isEditing&&(
+          <div style={{background:'#dbeafe',border:'1px solid #93c5fd',borderRadius:10,padding:'10px 14px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:13,fontWeight:700,color:'#1d4ed8'}}>✏️ Editing Job — {form.date}</span>
+            <button className="btn secondary sm" onClick={cancelEdit}>Cancel</button>
+          </div>
+        )}
+
         {/* Quick actions row */}
         <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-          {lastJob&&<button type="button" className="btn secondary sm" onClick={useLastJob}>↩ Use Last Job</button>}
-          {prefill&&<button type="button" className="btn orange sm">🔁 Repeating Job</button>}
-          <button type="button" className="btn secondary sm" onClick={()=>setForm(EMPTY_JOB())}>✕ Clear</button>
+          {lastJob&&!isEditing&&<button type="button" className="btn secondary sm" onClick={useLastJob}>↩ Use Last Job</button>}
+          {prefill&&!isEditing&&<button type="button" className="btn orange sm">🔁 Repeating Job</button>}
+          <button type="button" className="btn secondary sm" onClick={()=>{setForm(EMPTY_JOB());setSaved(null);setError('');if(onClearEdit)onClearEdit();}}>✕ Clear</button>
         </div>
 
         {error&&<div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#b91c1c',marginBottom:14,fontWeight:600}}>{error}</div>}
 
-        {/* Success strip */}
-        {saved&&(
+        {saved&&!isEditing&&(
           <div className="success-strip">
             <div className="success-strip-title">✅ Job saved — {money(saved.revenue)} · {money(jobGrossProfit(saved,settings))} profit</div>
             {saved.customerPhone&&<button className="btn success sm" onClick={()=>window.open('tel:'+saved.customerPhone)}>📞 Call {saved.customerName||'Customer'}</button>}
@@ -729,8 +822,14 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill}){
           </div>
         )}
 
-        {/* Quick Quote Engine — always visible */}
-        <QuickQuote form={form} settings={settings} weekGross={weekGross}/>
+        {/* CHANGE #3 — onApply sets revenue, onFormChange updates form fields */}
+        <QuickQuote
+          form={form}
+          settings={settings}
+          weekGross={weekGross}
+          onApply={v=>setF('revenue',v)}
+          onFormChange={setF}
+        />
 
         {/* GROUP 1: Job basics */}
         <div className="form-group">
@@ -836,37 +935,53 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill}){
 
       {/* Sticky save bar */}
       <div className="sticky-save">
-        <button className="btn secondary" onClick={()=>saveJob(true)}>Save + Add Another</button>
-        <button className="btn primary" onClick={()=>saveJob(false)}>Save Job →</button>
+        <button className="btn secondary" onClick={()=>saveJob(true)}>{isEditing?'Update + Add':'Save + Add Another'}</button>
+        <button className="btn primary" onClick={()=>saveJob(false)}>{isEditing?'Update Job ✓':'Save Job →'}</button>
       </div>
     </div>
   );
 }
 
 // ── HISTORY ────────────────────────────────────────────────────────────────────
-function History({jobs,settings,setJobs,onRepeat}){
+// CHANGE #6: delete removes from state + localStorage + Firebase
+// CHANGE #7: onEdit callback to load job into AddJob form
+function History({jobs,settings,onRepeat,onDelete,onEdit}){
+  const safeJobs=Array.isArray(jobs)?jobs:[];
   const [filter,setFilter]=useState('All');
   const [search,setSearch]=useState('');
   const [view,setView]=useState('weeks');
-  const cities=useMemo(()=>Array.from(new Set(jobs.map(j=>j.area))),[jobs]);
+  const cities=useMemo(()=>Array.from(new Set(safeJobs.map(j=>j.area))),[safeJobs]);
   const filtered=useMemo(()=>{
-    let j=jobs;
+    let j=safeJobs;
     if(filter==='Repair')j=j.filter(x=>/repair/i.test(x.service));
     else if(filter==='Replacement')j=j.filter(x=>/replacement|installation/i.test(x.service));
     else if(filter==='Pending')j=j.filter(x=>x.status==='Pending');
-    else if(!['All'].includes(filter))j=j.filter(x=>x.area===filter);
+    else if(filter!=='All')j=j.filter(x=>x.area===filter);
     if(search.trim()){const q=search.toLowerCase();j=j.filter(x=>(x.customerName||'').toLowerCase().includes(q)||(x.customerPhone||'').includes(q)||(x.tireSize||'').toLowerCase().includes(q)||(x.area||'').toLowerCase().includes(q)||(x.note||'').toLowerCase().includes(q));}
     return [...j].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  },[jobs,filter,search]);
+  },[safeJobs,filter,search]);
   const weekGroups=useMemo(()=>groupByWeek(filtered),[filtered]);
-  const remove=id=>{if(!window.confirm('Delete this job?'))return;setJobs(prev=>prev.filter(j=>j.id!==id));};
-  const markPaid=job=>{setJobs(prev=>prev.map(j=>j.id===job.id?{...j,status:'Completed'}:j));};
-  const thisWeekGross=useMemo(()=>{const tw=getWeekStart(TODAY());return jobs.filter(j=>getWeekStart(j.date)===tw).reduce((s,j)=>s+jobGrossProfit(j,settings),0);},[jobs,settings]);
+  const thisWeekGross=useMemo(()=>{const tw=getWeekStart(TODAY());return safeJobs.filter(j=>getWeekStart(j.date)===tw).reduce((s,j)=>s+jobGrossProfit(j,settings),0);},[safeJobs,settings]);
+
+  // CHANGE #6 — delete: caller (App) handles state + localStorage + Firebase
+  const handleDelete=id=>{
+    if(!window.confirm('Delete this job?'))return;
+    onDelete(id);
+  };
+
+  // CHANGE #7 — mark paid (needs setJobs — handled via onDelete pattern, use a separate prop)
+  // Keep markPaid local for now — it calls onDelete-like but updates
+  // We'll pass a setJobs prop for mark-paid
+  const markPaid=(job)=>{
+    // We can't update directly — pass through onEdit with modified job
+    if(onEdit) onEdit({...job, status:'Completed', _markPaidOnly:true});
+  };
 
   const JobRow=({job})=>{
     const profit=jobGrossProfit(job,settings);
     const dec=jobDecision(job,settings,thisWeekGross);
     const sendReview=()=>{const u=(settings.googleReviewUrl||'').trim();if(!u){alert('Set Google Review URL in Settings.');return;}const msg=encodeURIComponent('Hi'+(job.customerName?' '+job.customerName:'')+'! Thanks for choosing Wheel Rush. We\'d love a quick Google review! '+u);window.open(job.customerPhone?'sms:'+job.customerPhone+'?body='+msg:'sms:?body='+msg);};
+    const decCls=dec.dec==='strong'?'green':dec.dec==='okay'?'yellow':'red';
     return(
       <div className="job-row" key={job.id}>
         <div className="job-icon">🛞</div>
@@ -875,7 +990,7 @@ function History({jobs,settings,setJobs,onRepeat}){
           <div className="job-meta">{job.date} · {job.tireSize||'No size'} · {job.payment}{job.source?` · ${job.source}`:''}</div>
           {(job.customerName||job.customerPhone)&&<div className="job-meta" style={{marginTop:2}}>👤 {job.customerName||''}{job.customerPhone?` · ${job.customerPhone}`:''}</div>}
           <div style={{marginTop:5,display:'flex',gap:6,flexWrap:'wrap'}}>
-            <span className={`pill ${dec.cls==='strong'?'green':dec.cls==='okay'?'yellow':'red'}`}>{dec.label}</span>
+            <span className={`pill ${decCls}`}>{dec.label}</span>
             {job.emergency&&<span className="pill orange">🚨 Emergency</span>}
             {job.lateNight&&<span className="pill gray">🌙 Late Night</span>}
             {job.status==='Pending'&&<span className="pill orange">⏳ Pending</span>}
@@ -885,11 +1000,14 @@ function History({jobs,settings,setJobs,onRepeat}){
           <div className="value">{money(job.revenue)}</div>
           <div className={`sub ${profit>=0?'green':'red'}`} style={{fontWeight:700}}>{money(profit)}</div>
           <div style={{display:'flex',gap:5,marginTop:8,justifyContent:'flex-end',flexWrap:'wrap'}}>
+            {/* CHANGE #7 — Edit button */}
+            {onEdit&&<button className="btn blue xs" onClick={()=>onEdit(job)} title="Edit">✏️</button>}
             <button className="btn success xs" onClick={()=>onRepeat(job)} title="Repeat">🔁</button>
             <button className="btn blue xs" onClick={sendReview} title="Review">⭐</button>
             {job.status==='Pending'&&<button className="btn success xs" onClick={()=>markPaid(job)}>✓ Paid</button>}
             {job.customerPhone&&<button className="btn secondary xs" onClick={()=>window.open('tel:'+job.customerPhone)}>📞</button>}
-            <button className="btn danger xs" onClick={()=>remove(job.id)}>×</button>
+            {/* CHANGE #6 — delete via onDelete */}
+            <button className="btn danger xs" onClick={()=>handleDelete(job.id)}>×</button>
           </div>
         </div>
       </div>
@@ -922,23 +1040,25 @@ function History({jobs,settings,setJobs,onRepeat}){
 }
 
 // ── EXPENSES ───────────────────────────────────────────────────────────────────
+// CHANGE #8 — fix JSX bug (missing braces around .map), add safety guards
 function Expenses({expenses,setExpenses}){
+  const safeExp=Array.isArray(expenses)?expenses:[];
   const [form,setForm]=useState({date:TODAY(),category:'Fuel',amount:'',note:''});
   const CATS=['Fuel','Oil/Fluids','Equipment Repair','Supplies','Food','Tolls/Parking','Other'];
   const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
   const add=()=>{const amt=Number(form.amount||0);if(!amt){alert('Enter an amount.');return;}setExpenses(prev=>[{...form,id:uid(),amount:amt},...prev]);setForm({date:TODAY(),category:'Fuel',amount:'',note:''});};
   const remove=id=>{if(!window.confirm('Delete?'))return;setExpenses(prev=>prev.filter(e=>e.id!==id));};
-  const total=expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const total=safeExp.reduce((s,e)=>s+Number(e.amount||0),0);
   const thisWeek=getWeekStart(TODAY());
-  const weekTotal=expenses.filter(e=>getWeekStart(e.date)===thisWeek).reduce((s,e)=>s+Number(e.amount||0),0);
+  const weekTotal=safeExp.filter(e=>getWeekStart(e.date||TODAY())===thisWeek).reduce((s,e)=>s+Number(e.amount||0),0);
   return(
     <div className="screen"><div className="page">
       <div className="section-label" style={{marginTop:0}}>Variable Expenses</div>
       <div className="mini-grid" style={{marginBottom:14}}>
         <div className="mini-box"><strong>{money(weekTotal)}</strong><span>This Week</span></div>
         <div className="mini-box"><strong>{money(total)}</strong><span>All Time</span></div>
-        <div className="mini-box"><strong>{expenses.length}</strong><span>Receipts</span></div>
-        <div className="mini-box"><strong>{expenses.length?money(total/expenses.length):'—'}</strong><span>Avg</span></div>
+        <div className="mini-box"><strong>{safeExp.length}</strong><span>Receipts</span></div>
+        <div className="mini-box"><strong>{safeExp.length?money(total/safeExp.length):'—'}</strong><span>Avg</span></div>
       </div>
       <div className="card" style={{marginBottom:14}}>
         <div className="card-pad">
@@ -948,43 +1068,60 @@ function Expenses({expenses,setExpenses}){
           <button className="btn primary" style={{width:'100%'}} onClick={add}>+ Log Expense</button>
         </div>
       </div>
-      {expenses.length===0?<EmptyState icon="🧾" title="No expenses logged" sub="Track fuel, supplies, repairs."/>:(
-        <div className="stack">[...expenses].sort((a,b)=>b.date.localeCompare(a.date)).map(exp=>(
-          <div className="job-row" key={exp.id}><div className="job-icon" style={{fontSize:16}}>🧾</div><div className="job-main"><div className="job-title">{exp.category}</div><div className="job-meta">{exp.date}{exp.note?' · '+exp.note:''}</div></div><div className="job-right"><div className="value red">{money(exp.amount)}</div><button className="btn danger sm" style={{marginTop:8}} onClick={()=>remove(exp.id)}>×</button></div></div>
-        ))
-      </div>)}
+      {/* CHANGE #8 — fixed missing braces around map expression */}
+      {safeExp.length===0?<EmptyState icon="🧾" title="No expenses logged" sub="Track fuel, supplies, repairs."/>:(
+        <div className="stack">
+          {[...safeExp].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(exp=>(
+            <div className="job-row" key={exp.id}>
+              <div className="job-icon" style={{fontSize:16}}>🧾</div>
+              <div className="job-main">
+                <div className="job-title">{exp.category}</div>
+                <div className="job-meta">{exp.date}{exp.note?' · '+exp.note:''}</div>
+              </div>
+              <div className="job-right">
+                <div className="value red">{money(exp.amount)}</div>
+                <button className="btn danger sm" style={{marginTop:8}} onClick={()=>remove(exp.id)}>×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div></div>
   );
 }
 
 // ── PAYOUTS ────────────────────────────────────────────────────────────────────
+// CHANGE #8 — safety guards for undefined jobs/settings
 function Payouts({jobs,settings}){
-  const weeks=useMemo(()=>groupByWeek(jobs),[jobs]);
+  const safeJobs=Array.isArray(jobs)?jobs:[];
+  const safeSettings=settings||DEFAULT_SETTINGS;
+  const weeks=useMemo(()=>groupByWeek(safeJobs),[safeJobs]);
   if(!weeks.length)return<div className="screen"><div className="page"><EmptyState icon="💰" title="No payout history" sub="Log jobs to see weekly payout breakdowns."/></div></div>;
   return(
     <div className="screen"><div className="page">
       <div className="section-label" style={{marginTop:0}}>Weekly Payouts</div>
       {weeks.map(([wk,weekJobs])=>{
-        const t=weekSummary(weekJobs,settings);
-        const ao1=settings.owner1Active!==false,ao2=settings.owner2Active!==false;
-        const st=(ao1?Number(settings.profitSplit1||50):0)+(ao2?Number(settings.profitSplit2||50):0)||100;
-        const o1=t.net>0&&ao1?r2(t.net*(Number(settings.profitSplit1||50)/st)):0;
-        const o2=t.net>0&&ao2?r2(t.net*(Number(settings.profitSplit2||50)/st)):0;
-        const tax=t.net>0&&settings.taxRate>0?r2(t.net*(Number(settings.taxRate)/100)):0;
+        const safeWeekJobs=Array.isArray(weekJobs)?weekJobs:[];
+        const t=weekSummary(safeWeekJobs,safeSettings);
+        const ao1=safeSettings.owner1Active!==false,ao2=safeSettings.owner2Active!==false;
+        const st=(ao1?Number(safeSettings.profitSplit1||50):0)+(ao2?Number(safeSettings.profitSplit2||50):0)||100;
+        const o1=t.net>0&&ao1?r2(t.net*(Number(safeSettings.profitSplit1||50)/st)):0;
+        const o2=t.net>0&&ao2?r2(t.net*(Number(safeSettings.profitSplit2||50)/st)):0;
+        const tax=t.net>0&&safeSettings.taxRate>0?r2(t.net*(Number(safeSettings.taxRate)/100)):0;
         return(
           <div className="card" key={wk} style={{marginBottom:14}}>
-            <div className="card-pad" style={{borderBottom:'1px solid #f0f0f0'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontWeight:700,fontSize:14}}>{weekLabel(wk)}</div><div className="sub">{weekJobs.length} jobs</div></div><div className={`value big ${t.net>=0?'green':'red'}`}>{money(t.net)}</div></div></div>
+            <div className="card-pad" style={{borderBottom:'1px solid #f0f0f0'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontWeight:700,fontSize:14}}>{weekLabel(wk)}</div><div className="sub">{safeWeekJobs.length} jobs</div></div><div className={`value big ${t.net>=0?'green':'red'}`}>{money(t.net)}</div></div></div>
             <div className="card-row"><div className="label">Revenue</div><div className="value">{money(t.revenue)}</div></div>
             <div className="card-row"><div className="label">Direct Costs</div><div className="value red">{money(t.directCosts)}</div></div>
             <div className="card-row"><div className="label">Gross Profit</div><div className="value">{money(t.grossProfit)}</div></div>
             <div className="card-row"><div className="label">Weekly Fixed</div><div className="value red">{money(t.fixed)}</div></div>
-            {[{name:settings.owner1Name,pct:settings.profitSplit1,amt:o1,active:ao1},{name:settings.owner2Name,pct:settings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>(
+            {[{name:safeSettings.owner1Name||'Owner 1',pct:safeSettings.profitSplit1,amt:o1,active:ao1},{name:safeSettings.owner2Name||'Owner 2',pct:safeSettings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>(
               <div key={i} className="card-row" style={{background:'#f9f9f9',opacity:o.active?1:0.4}}>
                 <div><div style={{display:'flex',gap:6,alignItems:'center'}}><div className="label">{o.name}</div>{!o.active&&<span style={{fontSize:10,background:'#eee',color:'#999',borderRadius:4,padding:'1px 5px',fontWeight:700}}>OFF</span>}</div><div className="sub">{o.pct}% split</div></div>
                 <div className={`value ${o.active&&o.amt>0?'green':''}`}>{o.active?money(o.amt):'—'}</div>
               </div>
             ))}
-            {tax>0&&<div className="card-pad"><div className="tax-box" style={{marginTop:0}}><div className="tax-lbl">💰 Tax Reserve ({settings.taxRate}%)</div><div className="tax-amt">{money(tax)}</div><div className="tax-hint">~{money(tax/2)} per owner</div></div></div>}
+            {tax>0&&<div className="card-pad"><div className="tax-box" style={{marginTop:0}}><div className="tax-lbl">💰 Tax Reserve ({safeSettings.taxRate}%)</div><div className="tax-amt">{money(tax)}</div><div className="tax-hint">~{money(tax/2)} per owner</div></div></div>}
           </div>
         );
       })}
@@ -995,22 +1132,23 @@ function Payouts({jobs,settings}){
 // ── INVENTORY ──────────────────────────────────────────────────────────────────
 const LOW_STOCK=2;
 function Inventory({inventory,setInventory}){
+  const safeInv=Array.isArray(inventory)?inventory:[];
   const [search,setSearch]=useState('');
   const [editId,setEditId]=useState(null);
   const update=(id,patch)=>setInventory(prev=>prev.map(i=>i.id===id?{...i,...patch}:i));
   const add=()=>{const id=uid();setInventory(prev=>[{id,size:'',qty:0,cost:0,notes:''},...prev]);setEditId(id);};
   const remove=id=>{if(!window.confirm('Remove?'))return;setInventory(prev=>prev.filter(i=>i.id!==id));setEditId(null);};
   const step=(id,delta)=>setInventory(prev=>prev.map(i=>i.id===id?{...i,qty:Math.max(0,(Number(i.qty)||0)+delta)}:i));
-  const totalQty=inventory.reduce((s,i)=>s+Number(i.qty||0),0);
-  const totalValue=inventory.reduce((s,i)=>s+Number(i.qty||0)*Number(i.cost||0),0);
-  const lowStock=inventory.filter(i=>Number(i.qty||0)>0&&Number(i.qty||0)<=LOW_STOCK);
-  const outOfStock=inventory.filter(i=>Number(i.qty||0)===0);
-  const filtered=search.trim()?inventory.filter(i=>(i.size||'').toLowerCase().includes(search.toLowerCase())):inventory;
+  const totalQty=safeInv.reduce((s,i)=>s+Number(i.qty||0),0);
+  const totalValue=safeInv.reduce((s,i)=>s+Number(i.qty||0)*Number(i.cost||0),0);
+  const lowStock=safeInv.filter(i=>Number(i.qty||0)>0&&Number(i.qty||0)<=LOW_STOCK);
+  const outOfStock=safeInv.filter(i=>Number(i.qty||0)===0);
+  const filtered=search.trim()?safeInv.filter(i=>(i.size||'').toLowerCase().includes(search.toLowerCase())):safeInv;
   const sorted=[...filtered].sort((a,b)=>(a.size||'').localeCompare(b.size||''));
   return(
     <div className="screen"><div className="page">
       <div className="kpi-grid three" style={{marginBottom:10}}>
-        <div className="kpi"><div className="kpi-label">Total Tires</div><div className="kpi-value">{totalQty}</div><div className="kpi-sub">{inventory.length} sizes</div></div>
+        <div className="kpi"><div className="kpi-label">Total Tires</div><div className="kpi-value">{totalQty}</div><div className="kpi-sub">{safeInv.length} sizes</div></div>
         <div className="kpi"><div className="kpi-label">Stock Value</div><div className="kpi-value">{money(totalValue)}</div><div className="kpi-sub">at cost</div></div>
         <div className="kpi"><div className="kpi-label">Low Stock</div><div className={`kpi-value ${lowStock.length+outOfStock.length>0?'red':'green'}`}>{lowStock.length+outOfStock.length}</div><div className="kpi-sub">need reorder</div></div>
       </div>
@@ -1020,7 +1158,7 @@ function Inventory({inventory,setInventory}){
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search tire size…" style={{flex:1,border:'1.5px solid #e3e3e3',borderRadius:12,padding:'11px 14px',fontSize:15,outline:'none',background:'#fff'}}/>
         <button className="btn primary" style={{flexShrink:0,padding:'11px 16px',fontSize:13}} onClick={add}>+ Add</button>
       </div>
-      <div style={{fontSize:11,color:'#999',marginBottom:8,fontFamily:'"IBM Plex Mono",monospace'}}>{search?`${sorted.length} of ${inventory.length} sizes`:`${inventory.length} sizes · ${totalQty} tires`}</div>
+      <div style={{fontSize:11,color:'#999',marginBottom:8,fontFamily:'"IBM Plex Mono",monospace'}}>{search?`${sorted.length} of ${safeInv.length} sizes`:`${safeInv.length} sizes · ${totalQty} tires`}</div>
       {sorted.length===0?(search?<EmptyState icon="🔍" title="No match" sub={`No sizes matching "${search}"`}/>:<EmptyState icon="🛞" title="No inventory" sub="Tap + Add to add a tire size."/>):(
         <div className="card">
           {sorted.map((item,idx)=>{
@@ -1096,7 +1234,7 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,expenses}){
       <div className="card">
         <div className="settings-row"><div><div className="label">Repair Target Profit ($)</div></div><input type="number" className="settings-inp" style={{width:90}} value={settings.repairTarget||''} onChange={e=>upd('repairTarget',e.target.value===''?'':Number(e.target.value))}/></div>
         <div className="settings-row"><div><div className="label">Replacement Target Profit ($)</div></div><input type="number" className="settings-inp" style={{width:90}} value={settings.replacementTarget||''} onChange={e=>upd('replacementTarget',e.target.value===''?'':Number(e.target.value))}/></div>
-        <div className="settings-row"><div><div className="label">Skip Below ($)</div><div className="sub">Profit below this = Skip</div></div><input type="number" className="settings-inp" style={{width:90}} value={settings.skipThreshold||''} onChange={e=>upd('skipThreshold',e.target.value===''?'':Number(e.target.value))}/></div>
+        <div className="settings-row"><div><div className="label">Too Low Below ($)</div><div className="sub">Profit below this = Too Low</div></div><input type="number" className="settings-inp" style={{width:90}} value={settings.skipThreshold||''} onChange={e=>upd('skipThreshold',e.target.value===''?'':Number(e.target.value))}/></div>
         <div className="settings-row"><div><div className="label">Risky Beyond (miles)</div></div><input type="number" className="settings-inp" style={{width:90}} value={settings.riskyMiles||''} onChange={e=>upd('riskyMiles',e.target.value===''?'':Number(e.target.value))}/></div>
         <div className="settings-row"><div><div className="label">Cost Per Mile ($)</div></div><input type="number" step="0.01" className="settings-inp" style={{width:90}} value={settings.costPerMile||''} onChange={e=>upd('costPerMile',e.target.value===''?'':Number(e.target.value))}/></div>
       </div>
@@ -1133,37 +1271,27 @@ function App(){
   const [inventory,setInventory]=useState(()=>migrateOldInventory()||DEFAULT_INVENTORY);
   const [expenses,setExpenses]=useState(()=>load(KEYS.expenses,[]));
   const [prefill,setPrefill]=useState(null);
+  // CHANGE #7 — editJob state
+  const [editJob,setEditJob]=useState(null);
   const [sync,setSync]=useState('local');
 
   // Single init effect — polls until _auth AND _db both ready
   useEffect(()=>{
     let authUnsub=null,cancelled=false;
     const giveUp=setTimeout(()=>{ if(cancelled)return; setAuthReady(true); },12000);
-    const teardown=()=>{ };
     const attachFirestore=u=>{
       if(!u||!_db)return;
       setSync('syncing');
-      // Firebase is source of truth when signed in.
-      // On first sign-in we upload any pre-auth local jobs, then Firebase owns all data.
       const u1=fbListen(jobCol(),docs=>{
         if(docs.length>0){
-          // Firebase has data — it wins. Also upload any truly new local jobs
-          // that were created while offline (not yet in Firebase).
           const fbIds=new Set(docs.map(d=>String(d.id)));
-          const localQueue=load('wr2-upload-queue',[]);  // jobs saved while offline
+          const localQueue=load('wr2-upload-queue',[]);
           const toUpload=localQueue.filter(j=>!fbIds.has(String(j.id)));
-          if(toUpload.length>0){
-            toUpload.forEach(j=>fbSet(jobCol(),j.id,j));
-            persist('wr2-upload-queue',[]);
-          }
-          setJobs(docs);  // Firebase is canonical — no merge with stale local
+          if(toUpload.length>0){toUpload.forEach(j=>fbSet(jobCol(),j.id,j));persist('wr2-upload-queue',[]);}
+          setJobs(docs);
         } else {
-          // Firebase empty (first sign-in) — push local jobs up
           const local=load(KEYS.jobs,[]);
-          if(local.length>0){
-            fbSetAll(jobCol(),local);
-            persist('wr2-upload-queue',[]);  // clear queue, all uploaded
-          }
+          if(local.length>0){fbSetAll(jobCol(),local);persist('wr2-upload-queue',[]);}
           setJobs(local);
         }
         setSync('connected');
@@ -1173,23 +1301,18 @@ function App(){
         else{ const l=load(KEYS.inventory,[]); if(l.length>0)fbSetAll(invCol(),l); }
       });
       const u3=fbListen(expCol(),docs=>setExpenses(docs));
-      // Settings: load once from Firestore at sign-in, then never overwrite again.
-      // After initial load, the useEffect debounce pushes changes TO Firebase only.
-      const sDoc = settingDoc();
+      const sDoc=settingDoc();
       if(sDoc){
         sDoc.get().then(snap=>{
           if(snap.exists){
-            const saved = snap.data();
-            // Only apply if Firebase actually has data beyond defaults
-            // Use Firebase as-is — it was saved by a previous deliberate user action
+            const saved=snap.data();
             setSettings(()=>({...DEFAULT_SETTINGS,...saved}));
-            setTimeout(()=>{ settingsLoadedRef.current = true; }, 100);
+            setTimeout(()=>{ settingsLoadedRef.current=true; },100);
           } else {
-            // First time for this account — save current local settings to Firebase
-            const local = load(KEYS.settings, {});
-            const toSave = {...DEFAULT_SETTINGS,...local};
+            const local=load(KEYS.settings,{});
+            const toSave={...DEFAULT_SETTINGS,...local};
             sDoc.set(toSave).catch(()=>{});
-            settingsLoadedRef.current = true;
+            settingsLoadedRef.current=true;
           }
         }).catch(()=>{});
       }
@@ -1202,28 +1325,34 @@ function App(){
         if(cancelled)return;
         setUser(u||null);setAuthReady(true);
         attachFirestore(u);
-        if(!u){ setSync('local'); settingsLoadedRef.current = true; }
+        if(!u){ setSync('local'); settingsLoadedRef.current=true; }
       });
     };
     init();
     return()=>{ cancelled=true;clearTimeout(giveUp);if(authUnsub)authUnsub(); };
   },[]);
 
-  // Settings: always persist locally, and debounce-write to Firebase.
-  // The settingsLoadedRef prevents the Firebase initial load from triggering
-  // a write-back loop: we only write to Firebase if user has explicitly changed something.
-  const settingsLoadedRef = useRef(false);
+  const settingsLoadedRef=useRef(false);
   useEffect(()=>{
-    persist(KEYS.settings, settings);
-    if(!settingsLoadedRef.current) return; // skip write during initial Firebase load
-    const t = setTimeout(()=>{
-      const doc = settingDoc();
-      if(user && doc) doc.set(settings).catch(()=>{});
-    }, 1000);
-    return ()=>clearTimeout(t);
-  },[settings, user]);
-  // Inventory synced to Firebase when signed in
+    persist(KEYS.settings,settings);
+    if(!settingsLoadedRef.current)return;
+    const t=setTimeout(()=>{const doc=settingDoc();if(user&&doc)doc.set(settings).catch(()=>{});},1000);
+    return()=>clearTimeout(t);
+  },[settings,user]);
   useEffect(()=>{ if(user&&_db)fbSetAll(invCol(),inventory); },[inventory,user]);
+
+  // CHANGE #6 — deleteJob: removes from state, localStorage, AND Firebase
+  const deleteJob=useCallback((id)=>{
+    setJobs(prev=>{
+      const next=prev.filter(j=>j.id!==id);
+      persist(KEYS.jobs,next);
+      return next;
+    });
+    if(user) fbDel(jobCol(),id);
+    // Also remove from upload queue if it was queued
+    const q=load('wr2-upload-queue',[]);
+    if(q.some(j=>j.id===id)) persist('wr2-upload-queue',q.filter(j=>j.id!==id));
+  },[user]);
 
   const saveJob=useCallback(async(job,andAdd)=>{
     const isRepl=/replacement|installation/i.test(job.service||'');
@@ -1238,12 +1367,26 @@ function App(){
     setJobs(prev=>{const next=[entry,...prev.filter(j=>j.id!==entry.id)];persist(KEYS.jobs,next);return next;});
     if(user){ fbSet(jobCol(),entry.id,entry); }
     else{
-      // Queue for upload when user signs in
       const q=load('wr2-upload-queue',[]);
       persist('wr2-upload-queue',[entry,...q.filter(j=>j.id!==entry.id)]);
     }
+    // CHANGE #7 — clear edit state after saving
+    setEditJob(null);
     if(!andAdd)setTab('dashboard');
   },[user]);
+
+  // CHANGE #7 — handleEdit: for edit or mark-paid-only from History
+  const handleEdit=useCallback((job)=>{
+    if(job._markPaidOnly){
+      // mark paid without entering edit form
+      const updated={...job,status:'Completed'};
+      delete updated._markPaidOnly;
+      saveJob(updated,true);
+      return;
+    }
+    setEditJob(job);
+    setTab('add');
+  },[saveJob]);
 
   const signOut=async()=>{try{await _auth.signOut();setUser(null);setSync('local');}catch{}};
 
@@ -1256,8 +1399,22 @@ function App(){
     <div className="app">
       <Header settings={settings} syncStatus={sync} onSignOut={signOut}/>
       {tab==='dashboard'&&<Dashboard jobs={jobs} varExpenses={expenses} settings={settings} setTab={setTab} onRepeat={j=>{setPrefill(j);setTab('add');}}/>}
-      {tab==='add'&&<AddJob onSave={saveJob} settings={settings} jobs={jobs} prefill={prefill} onClearPrefill={()=>setPrefill(null)}/>}
-      {tab==='history'&&<History jobs={jobs} settings={settings} setJobs={j=>setJobs(j)} onRepeat={j=>{setPrefill(j);setTab('add');}}/>}
+      {tab==='add'&&<AddJob
+        onSave={saveJob}
+        settings={settings}
+        jobs={jobs}
+        prefill={prefill}
+        onClearPrefill={()=>setPrefill(null)}
+        editJob={editJob}
+        onClearEdit={()=>setEditJob(null)}
+      />}
+      {tab==='history'&&<History
+        jobs={jobs}
+        settings={settings}
+        onRepeat={j=>{setPrefill(j);setTab('add');}}
+        onDelete={deleteJob}
+        onEdit={handleEdit}
+      />}
       {tab==='payouts'&&<Payouts jobs={jobs} settings={settings}/>}
       {tab==='expenses'&&<Expenses expenses={expenses} setExpenses={e=>{setExpenses(e);if(user)e.forEach(x=>fbSet(expCol(),x.id,x));}}/>}
       {tab==='inventory'&&<Inventory inventory={inventory} setInventory={setInventory}/>}
@@ -1271,5 +1428,6 @@ function App(){
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
+
 </body>
 </html>
