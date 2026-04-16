@@ -30,7 +30,7 @@
     .badge.green{background:rgba(74,222,128,0.15);color:#4ade80}
     .badge.orange{background:rgba(234,88,12,0.2);color:#fb923c}
     .screen{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
-    .page{padding:14px 14px 120px}
+    .page{padding:14px 14px calc(100px + env(safe-area-inset-bottom))}
     .section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:#999;margin:18px 0 8px}
     .section-label:first-child{margin-top:0}
     .label{font-size:12px;color:#777}
@@ -216,6 +216,31 @@
       .field-row{grid-template-columns:1fr}
       .mini-grid{grid-template-columns:repeat(2,1fr)}
       .pay-grid{grid-template-columns:repeat(2,1fr)}
+    }
+
+
+    /* QuickQuote active price selection */
+    .qq-apply-btn.active-sel{outline:2px solid #fff;outline-offset:1px;}
+    .qq-apply-btn.suggested.active-sel{background:#4ade80;color:#14532d;}
+    .qq-apply-btn.premium.active-sel{background:#fb923c;color:#431407;}
+    .qq-apply-btn.custom.active-sel{background:rgba(255,255,255,.25);color:#fff;}
+    /* ── Responsive / device fit ── */
+    @media(min-width:600px){
+      .app{max-width:480px;margin:0 auto;box-shadow:0 0 40px rgba(0,0,0,.15)}
+      html,body,#root{background:#e8e8e8}
+    }
+    @media(max-width:360px){
+      .pay-grid{grid-template-columns:repeat(2,1fr)!important}
+      .field-row{grid-template-columns:1fr!important}
+      .kpi-grid{grid-template-columns:1fr 1fr!important}
+      .mini-grid{grid-template-columns:1fr 1fr!important}
+      .page{padding:10px 10px calc(100px + env(safe-area-inset-bottom))}
+      .form-group{padding:10px}
+      .section-label{margin:14px 0 6px}
+    }
+    @media(min-height:812px){
+      /* Tall phones (iPhone X+) — a bit more breathing room */
+      .page{padding:16px 14px calc(110px + env(safe-area-inset-bottom))}
     }
   </style>
 
@@ -456,68 +481,61 @@ function CityInput({value, onChange}) {
 }
 
 // ── QUICK QUOTE ENGINE ─────────────────────────────────────────────────────────
-// CHANGE #1: Show Cost + Profit prominently under suggested price
-// CHANGE #2: "Enter job details" when miles/tireCost/miscCost all empty
-// CHANGE #3: Apply buttons update revenue field instantly (onApply + onFormChange)
-// CHANGE #9: Inputs for miles, tireCost, miscCost, qty INSIDE the card
 function QuickQuote({form, settings, weekGross, onApply, onFormChange}) {
-  // CHANGE #2 — detect if any cost inputs have been entered
+  const [priceMode, setPriceMode] = useState('suggested'); // 'suggested'|'premium'|'custom'
+  const customRef = useRef(null);
+
   const hasInputs = Number(form.miles||0) > 0 || Number(form.tireCost||0) > 0 || Number(form.miscCost||0) > 0;
+  const directCost   = jobDirectCost(form, settings);
+  const suggested    = suggestedPrice(form, settings);
+  const isRepl       = /replacement|installation/i.test(form.service||'');
+  const premiumPrice = Math.ceil((directCost + (isRepl?130:105) + premiums(form))/5)*5;
+  const prem         = premiums(form);
+  const skip         = Number(settings.skipThreshold||70);
 
-  const directCost  = jobDirectCost(form, settings);
-  const suggested   = suggestedPrice(form, settings);
-  const entered     = Number(form.revenue||0);
-  const priceToUse  = entered || suggested;
-  const profit      = r2(priceToUse - directCost);
-  const isRepl      = /replacement|installation/i.test(form.service||'');
-  const premiumPrice= Math.ceil((directCost + (isRepl?130:105) + premiums(form))/5)*5;
-  const prem        = premiums(form);
-  const skip        = Number(settings.skipThreshold||70);
+  // Determine displayed price based on mode
+  const displayPrice = priceMode==='custom'
+    ? (Number(form.revenue||0) || 0)
+    : priceMode==='premium' ? premiumPrice : suggested;
+  const profit = r2(displayPrice - directCost);
 
-  // CHANGE #4 — decision labels
   const decBadge = profit<skip
     ? {label:'Too Low',cls:'low'}
-    : profit>=skip+40
-      ? {label:'Strong Margin',cls:'take'}
-      : {label:'Take It',cls:'take'};
+    : profit>=skip+40 ? {label:'Strong Margin',cls:'take'} : {label:'Take It',cls:'take'};
 
-  // Inline input style for dark card
+  const applyMode = (mode, price) => {
+    setPriceMode(mode);
+    onApply(String(price));
+    if (mode==='custom') {
+      setTimeout(()=>customRef.current&&customRef.current.focus(), 50);
+    }
+  };
+
   const inpStyle = {
     background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.15)',
     borderRadius:8,padding:'8px 10px',color:'#fff',fontSize:15,outline:'none',
-    width:'100%',fontFamily:'"IBM Plex Mono",monospace',fontWeight:600,
-    textAlign:'center',
+    width:'100%',fontFamily:'"IBM Plex Mono",monospace',fontWeight:600,textAlign:'center',
   };
   const inpLbl = {fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.6px',color:'#555',marginBottom:5,textAlign:'center'};
 
   return (
     <div className="quote-box">
-
-      {/* CHANGE #9 — inline inputs inside card */}
+      {/* Inline cost inputs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:14}}>
-        <div>
-          <div style={inpLbl}>Miles</div>
+        <div><div style={inpLbl}>Miles</div>
           <input type="number" min="0" inputMode="decimal" placeholder="0"
-            value={form.miles||''} onChange={e=>onFormChange('miles',e.target.value)} style={inpStyle}/>
-        </div>
-        <div>
-          <div style={inpLbl}>Tire $</div>
+            value={form.miles||''} onChange={e=>onFormChange('miles',e.target.value)} style={inpStyle}/></div>
+        <div><div style={inpLbl}>Tire $</div>
           <input type="number" min="0" inputMode="decimal" placeholder="0"
-            value={form.tireCost||''} onChange={e=>onFormChange('tireCost',e.target.value)} style={inpStyle}/>
-        </div>
-        <div>
-          <div style={inpLbl}>Misc $</div>
+            value={form.tireCost||''} onChange={e=>onFormChange('tireCost',e.target.value)} style={inpStyle}/></div>
+        <div><div style={inpLbl}>Misc $</div>
           <input type="number" min="0" inputMode="decimal" placeholder="0"
-            value={form.miscCost||''} onChange={e=>onFormChange('miscCost',e.target.value)} style={inpStyle}/>
-        </div>
-        <div>
-          <div style={inpLbl}>Qty</div>
+            value={form.miscCost||''} onChange={e=>onFormChange('miscCost',e.target.value)} style={inpStyle}/></div>
+        <div><div style={inpLbl}>Qty</div>
           <input type="number" min="1" inputMode="numeric" placeholder="1"
-            value={form.qty||''} onChange={e=>onFormChange('qty',e.target.value)} style={inpStyle}/>
-        </div>
+            value={form.qty||''} onChange={e=>onFormChange('qty',e.target.value)} style={inpStyle}/></div>
       </div>
 
-      {/* CHANGE #2 — placeholder when no inputs entered */}
       {!hasInputs ? (
         <div style={{textAlign:'center',padding:'10px 0 4px'}}>
           <div style={{fontSize:13,color:'#444',fontWeight:600}}>Enter job details above</div>
@@ -525,11 +543,12 @@ function QuickQuote({form, settings, weekGross, onApply, onFormChange}) {
         </div>
       ) : (
         <>
-          {/* CHANGE #1 — Suggested Price as hero with Cost + Profit below */}
+          {/* Hero price block */}
           <div className="qq-suggested">
-            <div className="qq-suggested-label">Suggested Price</div>
-            <div className="qq-suggested-price">{money(suggested)}</div>
-            {/* Cost + Profit displayed prominently under price */}
+            <div className="qq-suggested-label">
+              {priceMode==='custom'?'Custom Price':priceMode==='premium'?'Premium Price':'Suggested Price'}
+            </div>
+            <div className="qq-suggested-price">{money(displayPrice)}</div>
             <div style={{display:'flex',justifyContent:'center',gap:20,marginTop:8,marginBottom:6}}>
               <div style={{textAlign:'center'}}>
                 <div style={{fontSize:11,color:'#555',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',marginBottom:2}}>Cost</div>
@@ -553,18 +572,50 @@ function QuickQuote({form, settings, weekGross, onApply, onFormChange}) {
             </div>
           </div>
 
-          {/* CHANGE #3 — apply buttons wire to onApply which sets revenue instantly */}
+          {/* Apply buttons — active one highlighted */}
           <div className="qq-apply-row">
-            <button className="qq-apply-btn suggested" onClick={()=>onApply(String(suggested))}>
-              Apply Suggested<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(suggested)}</span>
+            <button
+              className={`qq-apply-btn ${priceMode==='suggested'?'suggested active-sel':'suggested'}`}
+              onClick={()=>applyMode('suggested',suggested)}>
+              {priceMode==='suggested'?'✓ ':''}{money(suggested)}<br/>
+              <span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:10,opacity:.8}}>Suggested</span>
             </button>
-            <button className="qq-apply-btn premium" onClick={()=>onApply(String(premiumPrice))}>
-              Apply Premium<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>{money(premiumPrice)}</span>
+            <button
+              className={`qq-apply-btn ${priceMode==='premium'?'premium active-sel':'premium'}`}
+              onClick={()=>applyMode('premium',premiumPrice)}>
+              {priceMode==='premium'?'✓ ':''}{money(premiumPrice)}<br/>
+              <span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:10,opacity:.8}}>Premium</span>
             </button>
-            <button className="qq-apply-btn custom" onClick={()=>onApply('')}>
-              Custom Price<br/><span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:13}}>Enter →</span>
+            <button
+              className={`qq-apply-btn ${priceMode==='custom'?'custom active-sel':'custom'}`}
+              onClick={()=>applyMode('custom','')}>
+              {priceMode==='custom'?'✓ ':''}Custom<br/>
+              <span style={{fontFamily:'"IBM Plex Mono",monospace',fontSize:10,opacity:.8}}>Enter price</span>
             </button>
           </div>
+
+          {/* Custom price input — visible only in custom mode */}
+          {priceMode==='custom'&&(
+            <div style={{marginTop:10}}>
+              <div style={{fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.6px',color:'#555',marginBottom:6,textAlign:'center'}}>Enter Custom Price</div>
+              <input
+                ref={customRef}
+                type="number" min="0" inputMode="decimal"
+                placeholder="0.00"
+                value={form.revenue||''}
+                onChange={e=>{onFormChange('revenue',e.target.value);}}
+                style={{
+                  ...inpStyle,
+                  fontSize:22,fontWeight:700,padding:'12px',
+                  border:'2px solid rgba(255,255,255,.3)',
+                  borderRadius:10,
+                }}
+              />
+              <div style={{fontSize:10,color:'#555',textAlign:'center',marginTop:5}}>
+                Profit: {money(r2(Number(form.revenue||0)-directCost))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -734,23 +785,75 @@ function Dashboard({jobs,varExpenses,settings,setTab,onRepeat}){
   );
 }
 
+
+// ── INVOICE GENERATOR ─────────────────────────────────────────────────────────
+function generateInvoiceText(job, bizName) {
+  const biz  = bizName || 'Wheel Rush Mobile Tire Repair';
+  const sep  = '─────────────────────────────';
+  const line = (label, val) => val ? `${label.padEnd(16)}${val}` : '';
+  const lines = [
+    `📋 INVOICE`,
+    sep,
+    biz,
+    `📞 305-897-7030`,
+    sep,
+    line('Date:', job.date),
+    job.customerName ? line('Customer:', job.customerName) : '',
+    job.customerPhone ? line('Phone:', job.customerPhone) : '',
+    sep,
+    line('Service:', job.service),
+    job.tireSize ? line('Tire Size:', `${job.tireSize}${job.qty>1?' x'+job.qty:''}`) : '',
+    job.area ? line('Location:', job.area) : '',
+    sep,
+    line('Total:', new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(job.revenue||0))),
+    line('Payment:', job.payment),
+    job.note ? `\nNotes: ${job.note}` : '',
+    sep,
+    'Thank you for choosing Wheel Rush!',
+    'Fast · Reliable · Mobile Tire Service',
+  ].filter(Boolean).join('\n');
+  return lines;
+}
+
+function sendInvoice(job, settings) {
+  const text = generateInvoiceText(job, settings.businessName);
+  if (job.customerPhone) {
+    window.open('sms:'+job.customerPhone+'?body='+encodeURIComponent(text));
+  } else {
+    // Copy to clipboard fallback
+    try {
+      navigator.clipboard.writeText(text).then(()=>alert('Invoice copied to clipboard!\nPaste it to send manually.'));
+    } catch {
+      // Older fallback
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('Invoice copied to clipboard!\nPaste it to send manually.');
+    }
+  }
+}
+
 // ── ADD JOB ────────────────────────────────────────────────────────────────────
-// CHANGE #7 — edit mode: accepts editJob prop, saves with same ID
 function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit}){
   const [form,setForm]=useState(EMPTY_JOB);
   const [error,setError]=useState('');
   const [saved,setSaved]=useState(null);
   const [tick,setTick]=useState(0);
-  const isEditing=!!(editJob&&editJob.id);
+  // FIX: store editingId locally so timing of onClearEdit doesn't affect save
+  const [editingId,setEditingId]=useState(null);
+  const isEditing=!!editingId;
   const recentSizes=useMemo(()=>[...new Set([...load(KEYS.sizes,[]),...DEFAULT_TIRE_SIZES])].slice(0,8),[tick]);
-  const weekGross=useMemo(()=>{const tw=getWeekStart(TODAY());return (Array.isArray(jobs)?jobs:[]).filter(j=>getWeekStart(j.date)===tw&&(!isEditing||j.id!==editJob.id)).reduce((s,j)=>s+jobGrossProfit(j,settings),0);},[jobs,settings,isEditing,editJob]);
-  const lastJob=useMemo(()=>[...(Array.isArray(jobs)?jobs:[])].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).find(j=>!isEditing||j.id!==editJob?.id)||null,[jobs,isEditing,editJob]);
+  const weekGross=useMemo(()=>{const tw=getWeekStart(TODAY());return (Array.isArray(jobs)?jobs:[]).filter(j=>getWeekStart(j.date)===tw&&(!isEditing||j.id!==editingId)).reduce((s,j)=>s+jobGrossProfit(j,settings),0);},[jobs,settings,isEditing,editingId]);
+  const lastJob=useMemo(()=>[...(Array.isArray(jobs)?jobs:[])].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).find(j=>j.id!==editingId)||null,[jobs,editingId]);
 
-  // Load editJob into form
+  // Load editJob into form — store ID locally, do NOT call onClearEdit here
   useEffect(()=>{
     if(editJob&&editJob.id){
       setForm({...EMPTY_JOB(),...editJob,revenue:String(editJob.revenue||''),tireCost:String(editJob.tireCost||''),miscCost:String(editJob.miscCost||''),miles:String(editJob.miles||'')});
+      setEditingId(editJob.id);
       setSaved(null);setError('');
+      // Clear the parent ref so App doesn't keep triggering this effect
       if(onClearEdit)onClearEdit();
       return;
     }
@@ -771,22 +874,28 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
     const rev=Number(form.revenue||0);
     if(!rev){setError('Enter the job price.');return;}
     if(form.tireSize){try{const p=load(KEYS.sizes,[]);persist(KEYS.sizes,[form.tireSize,...p.filter(s=>s!==form.tireSize)].slice(0,10));}catch{}}
-    // CHANGE #7 — preserve ID when editing
-    const entry={...form,id:isEditing?editJob.id:uid(),qty:Number(form.qty||1),revenue:r2(rev),tireCost:r2(form.tireCost),miscCost:r2(form.miscCost),miles:r2(form.miles)};
-    onSave(entry,andAdd);
+    // FIX: use local editingId — always correct regardless of parent prop timing
+    const entry={...form,id:editingId||uid(),qty:Number(form.qty||1),revenue:r2(rev),tireCost:r2(form.tireCost),miscCost:r2(form.miscCost),miles:r2(form.miles)};
+    onSave(entry, isEditing ? false : andAdd); // edit never "adds another"
     setTick(t=>t+1);setSaved(entry);
-    if(andAdd){setForm(EMPTY_JOB());setError('');setSaved(null);}
+    if(isEditing){
+      // After updating, exit edit mode and go back to History
+      setEditingId(null);
+      setForm(EMPTY_JOB());setError('');
+    } else if(andAdd){
+      setForm(EMPTY_JOB());setError('');setSaved(null);
+    }
   };
 
   const cancelEdit=()=>{
+    setEditingId(null);
     setForm(EMPTY_JOB());setError('');setSaved(null);
-    if(onClearEdit)onClearEdit();
   };
 
   const requestReview=()=>{
     const url=(settings.googleReviewUrl||'').trim();
     if(!url){alert('Set your Google Review URL in Settings.');return;}
-    const msg=encodeURIComponent('Hi'+(form.customerName?' '+form.customerName:'')+'! Thanks for choosing Wheel Rush today! We\'d really appreciate a quick Google review — it helps us grow! '+url);
+    const msg=encodeURIComponent('Hi'+(form.customerName?' '+form.customerName:'')+'! Thanks for choosing Wheel Rush today! We'd really appreciate a quick Google review — it helps us grow! '+url);
     window.open(form.customerPhone?'sms:'+form.customerPhone+'?body='+msg:'sms:?body='+msg);
   };
 
@@ -796,11 +905,11 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
     <div className="screen" style={{paddingBottom:0}}>
       <div style={{padding:'14px 14px 0'}}>
 
-        {/* CHANGE #7 — edit mode banner */}
+        {/* Edit mode banner */}
         {isEditing&&(
-          <div style={{background:'#dbeafe',border:'1px solid #93c5fd',borderRadius:10,padding:'10px 14px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{fontSize:13,fontWeight:700,color:'#1d4ed8'}}>✏️ Editing Job — {form.date}</span>
-            <button className="btn secondary sm" onClick={cancelEdit}>Cancel</button>
+          <div style={{background:'#fef9c3',border:'1.5px solid #fde047',borderRadius:10,padding:'10px 14px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:13,fontWeight:700,color:'#854d0e'}}>✏️ Editing Job — {form.date}</span>
+            <button className="btn secondary sm" onClick={cancelEdit}>Cancel Edit</button>
           </div>
         )}
 
@@ -808,17 +917,25 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
         <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
           {lastJob&&!isEditing&&<button type="button" className="btn secondary sm" onClick={useLastJob}>↩ Use Last Job</button>}
           {prefill&&!isEditing&&<button type="button" className="btn orange sm">🔁 Repeating Job</button>}
-          <button type="button" className="btn secondary sm" onClick={()=>{setForm(EMPTY_JOB());setSaved(null);setError('');if(onClearEdit)onClearEdit();}}>✕ Clear</button>
+          {!isEditing&&<button type="button" className="btn secondary sm" onClick={()=>{setForm(EMPTY_JOB());setSaved(null);setError('');}}>✕ Clear</button>}
         </div>
 
         {error&&<div style={{background:'#fee2e2',border:'1px solid #fca5a5',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#b91c1c',marginBottom:14,fontWeight:600}}>{error}</div>}
 
+        {/* Success strip — shown after new job save, NOT after edit (edit returns to history) */}
         {saved&&!isEditing&&(
           <div className="success-strip">
-            <div className="success-strip-title">✅ Job saved — {money(saved.revenue)} · {money(jobGrossProfit(saved,settings))} profit</div>
-            {saved.customerPhone&&<button className="btn success sm" onClick={()=>window.open('tel:'+saved.customerPhone)}>📞 Call {saved.customerName||'Customer'}</button>}
-            {saved.status==='Completed'&&<button className="btn success sm" onClick={requestReview}>⭐ Send Review</button>}
-            <button className="btn secondary sm" onClick={()=>{setForm({...saved,id:''});setSaved(null);}}>🔁 Duplicate</button>
+            <div className="success-strip-title">✅ {money(saved.revenue)} · {money(jobGrossProfit(saved,settings))} profit</div>
+            {/* Send Invoice */}
+            <button className="btn primary sm" onClick={()=>sendInvoice(saved,settings)}>
+              🧾 {saved.customerPhone?'Send Invoice':'Copy Invoice'}
+            </button>
+            {/* Send Review */}
+            {saved.status==='Completed'&&<button className="btn success sm" onClick={requestReview}>⭐ Review</button>}
+            {/* Call */}
+            {saved.customerPhone&&<button className="btn success sm" onClick={()=>window.open('tel:'+saved.customerPhone)}>📞 Call</button>}
+            {/* Duplicate */}
+            <button className="btn secondary sm" onClick={()=>{setForm({...saved,id:'',revenue:String(saved.revenue)});setSaved(null);}}>🔁 Dup</button>
           </div>
         )}
 
@@ -831,7 +948,36 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
           onFormChange={setF}
         />
 
-        {/* GROUP 1: Job basics */}
+        {/* GROUP 1: Pricing */}
+        <div className="form-group">
+          <div className="form-group-title">Pricing & Costs</div>
+          <div className="field-row">
+            <div className="field"><label>Job Price ($)</label>
+              <input type="number" min="0" inputMode="decimal" value={form.revenue} onChange={e=>setF('revenue',e.target.value)} placeholder={String(suggestedPrice(form,settings))} style={{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:18,padding:'14px'}}/>
+            </div>
+            <div className="field"><label>Tire Cost ($)</label>
+              <input type="number" min="0" inputMode="decimal" value={form.tireCost} onChange={e=>setF('tireCost',e.target.value)} placeholder="0" style={{fontFamily:'"IBM Plex Mono",monospace'}}/>
+            </div>
+          </div>
+          <div className="field-row">
+            <div className="field"><label>Misc Cost ($)</label>
+              <input type="number" min="0" inputMode="decimal" value={form.miscCost} onChange={e=>setF('miscCost',e.target.value)} placeholder="plugs, stems…"/>
+            </div>
+            <div className="field"><label>Qty</label>
+              <input type="number" min="1" value={form.qty} onChange={e=>setF('qty',e.target.value)}/>
+            </div>
+          </div>
+          <div className="field">
+            <label>Conditions <span style={{textTransform:'none',fontWeight:400,color:'#bbb'}}>— adds premium</span></label>
+            <div className="chip-row">
+              {FLAGS.map(([key,label,amt])=>(
+                <button type="button" key={key} className={`chip ${form[key]?'active':''}`} onClick={()=>setF(key,!form[key])}>{label}{form[key]?` +$${amt}`:''}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* GROUP 3: Job Details */}
         <div className="form-group">
           <div className="form-group-title">Job Details</div>
           <div className="field"><label>Service</label>
@@ -863,35 +1009,6 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
           </div>
           <div className="field"><label>Miles Driven</label>
             <input type="number" min="0" inputMode="decimal" value={form.miles} onChange={e=>setF('miles',e.target.value)} placeholder="0" style={{fontFamily:'"IBM Plex Mono",monospace'}}/>
-          </div>
-        </div>
-
-        {/* GROUP 3: Pricing */}
-        <div className="form-group">
-          <div className="form-group-title">Pricing & Costs</div>
-          <div className="field-row">
-            <div className="field"><label>Job Price ($)</label>
-              <input type="number" min="0" inputMode="decimal" value={form.revenue} onChange={e=>setF('revenue',e.target.value)} placeholder={String(suggestedPrice(form,settings))} style={{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:18,padding:'14px'}}/>
-            </div>
-            <div className="field"><label>Tire Cost ($)</label>
-              <input type="number" min="0" inputMode="decimal" value={form.tireCost} onChange={e=>setF('tireCost',e.target.value)} placeholder="0" style={{fontFamily:'"IBM Plex Mono",monospace'}}/>
-            </div>
-          </div>
-          <div className="field-row">
-            <div className="field"><label>Misc Cost ($)</label>
-              <input type="number" min="0" inputMode="decimal" value={form.miscCost} onChange={e=>setF('miscCost',e.target.value)} placeholder="plugs, stems…"/>
-            </div>
-            <div className="field"><label>Qty</label>
-              <input type="number" min="1" value={form.qty} onChange={e=>setF('qty',e.target.value)}/>
-            </div>
-          </div>
-          <div className="field">
-            <label>Conditions <span style={{textTransform:'none',fontWeight:400,color:'#bbb'}}>— adds premium</span></label>
-            <div className="chip-row">
-              {FLAGS.map(([key,label,amt])=>(
-                <button type="button" key={key} className={`chip ${form[key]?'active':''}`} onClick={()=>setF(key,!form[key])}>{label}{form[key]?` +$${amt}`:''}</button>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -935,8 +1052,18 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
 
       {/* Sticky save bar */}
       <div className="sticky-save">
-        <button className="btn secondary" onClick={()=>saveJob(true)}>{isEditing?'Update + Add':'Save + Add Another'}</button>
-        <button className="btn primary" onClick={()=>saveJob(false)}>{isEditing?'Update Job ✓':'Save Job →'}</button>
+        {/* In edit mode: just Update + Cancel. No "add another" option. */}
+        {isEditing ? (
+          <>
+            <button className="btn secondary" onClick={cancelEdit}>Cancel Edit</button>
+            <button className="btn primary" onClick={()=>saveJob(false)}>Update Job ✓</button>
+          </>
+        ) : (
+          <>
+            <button className="btn secondary" onClick={()=>saveJob(true)}>Save + Add Another</button>
+            <button className="btn primary" onClick={()=>saveJob(false)}>Save Job →</button>
+          </>
+        )}
       </div>
     </div>
   );
