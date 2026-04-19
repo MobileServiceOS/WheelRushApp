@@ -924,6 +924,14 @@ function Dashboard(props) {
         <div className="kpi"><div className="kpi-label">Fixed Exp.</div><div className="kpi-value">{money(fixed)}</div><div className="kpi-sub">weekly</div></div>
         <div className="kpi"><div className="kpi-label">Net Profit</div><div className={'kpi-value '+(totals.net>=0?'green':'red')}>{money(totals.net)}</div><div className="kpi-sub">after all costs</div></div>
       </div>
+      {totalQty > 100 && (
+        <div style={{background:'#fef9c3',border:'1.5px solid #fde047',borderRadius:10,padding:'10px 14px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:13,color:'#854d0e'}}>⚠️ Stock count looks off ({totalQty} tires)</div>
+            <div style={{fontSize:11,color:'#92400e',marginTop:2}}>Tap "Reset Stock" in Settings to restore your correct list</div>
+          </div>
+        </div>
+      )}
       <div className="kpi-grid three" style={{marginBottom:10}}>
         <div className="kpi"><div className="kpi-label">Direct Costs</div><div className="kpi-value">{money(totals.directCosts)}</div><div className="kpi-sub">travel + parts</div></div>
         <div className="kpi"><div className="kpi-label">Avg/Job</div><div className="kpi-value">{money(avgProfit)}</div><div className="kpi-sub">gross profit</div></div>
@@ -1622,12 +1630,12 @@ function Settings(props) {
   };
   const clearAll=function(){if(!window.confirm('Clear ALL data? Cannot be undone.'))return;Object.values(KEYS).forEach(function(k){localStorage.removeItem(k);});window.location.reload();};
   const resetInventory=function(){
-    if(!window.confirm('Reset inventory to your 52-size list (91 tires)? This replaces current stock data.'))return;
-    const fresh=[...DEFAULT_INVENTORY];
+    if(!window.confirm('Reset inventory to your 52-size list (91 tires)?\n\nThis will REPLACE the current '+inventory.length+' sizes / '+inventory.reduce(function(s,i){return s+Number(i.qty||0);},0)+' tires with your correct list.'))return;
+    const fresh=DEFAULT_INVENTORY.map(function(i){return {...i};});
     setInventory(fresh);
     persist(KEYS.inventory,fresh);
     if(props.onResetInventory)props.onResetInventory(fresh);
-    alert('Inventory reset to your 52-size list. Total: 91 tires.');
+    alert('✅ Done! Inventory reset to 52 sizes / 91 tires.');
   };
   const monthly=monthlyFixed(settings), weekly=weeklyFixed(settings);
   const ao1=settings.owner1Active!==false, ao2=settings.owner2Active!==false;
@@ -1712,7 +1720,7 @@ function App() {
   const [tab,setTab]             = useState('dashboard');
   const [jobs,setJobs]           = useState(function(){return migrateOldJobs();});
   const [settings,setSettings]   = useState(function(){return {...DEFAULT_SETTINGS,...load(KEYS.settings,{})};});
-  const [inventory,setInventory] = useState(function(){return migrateOldInventory()||DEFAULT_INVENTORY;});
+  const [inventory,setInventory] = useState(function(){const m=migrateOldInventory();return (m&&m.length>0)?m:DEFAULT_INVENTORY;});
   const [expenses,setExpenses]   = useState(function(){return load(KEYS.expenses,[]);});
   const [prefill,setPrefill]     = useState(null);
   const [editJob,setEditJob]     = useState(null);
@@ -1751,8 +1759,14 @@ function App() {
               notes: String(d.notes||''),
             };
           });
-          setInventory(clean);
-          persist(KEYS.inventory, clean);
+          // Deduplicate by ID (in case Firestore has stale duplicates)
+          const seen = new Set();
+          const deduped = clean.filter(function(d) {
+            if (seen.has(d.id)) return false;
+            seen.add(d.id); return true;
+          });
+          setInventory(deduped);
+          persist(KEYS.inventory, deduped);
         } else {
           // Nothing in Firebase — load from localStorage or defaults
           const local = load(KEYS.inventory, []);
