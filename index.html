@@ -1812,9 +1812,13 @@ function Inventory(props) {
   const outOfStock= inventory.filter(function(i){return Number(i.qty||0)===0;});
   const filtered  = search.trim()?inventory.filter(function(i){return (i.size||'').toLowerCase().includes(search.toLowerCase());}):inventory;
   const sorted    = [...filtered].sort(function(a,b) {
+    // Pending new items (blank size) always sort to top so they're visible
+    const aBlank = !(a.size||'').trim();
+    const bBlank = !(b.size||'').trim();
+    if (aBlank && !bBlank) return -1;
+    if (!aBlank && bBlank) return 1;
     const aBest = bestSellers.indexOf(a.size||'');
     const bBest = bestSellers.indexOf(b.size||'');
-    // Best sellers first (by rank), then alpha
     if (aBest !== -1 && bBest === -1) return -1;
     if (aBest === -1 && bBest !== -1) return 1;
     if (aBest !== -1 && bBest !== -1) return aBest - bBest;
@@ -1870,10 +1874,10 @@ function Inventory(props) {
             const isEditing=editId===item.id, qty=Number(item.qty||0);
             const isLow=qty>0&&qty<=LOW_STOCK, isOut=qty===0;
             return (
-              <div key={item.id} style={{borderBottom:idx<sorted.length-1?'1px solid #f2f2f2':'none'}}>
+              <div key={item.id} style={{borderBottom:idx<sorted.length-1?'1px solid #f2f2f2':'none',background:isEditing&&!item.size?'#fffbeb':''}}>
                 <div style={{display:'flex',alignItems:'center',padding:'11px 14px',gap:10,cursor:'pointer'}} onClick={function(){setEditId(isEditing?null:item.id);}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:15}}>{item.size||<span style={{color:'#ccc'}}>No size</span>}</div>
+                    <div style={{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:15,color:item.size?'#111':'#f07800'}}>{item.size||<span style={{color:'#f07800',fontSize:13}}>↑ Tap to enter size</span>}</div>
                     {item.cost>0 && <div style={{fontSize:11,color:'#aaa',marginTop:1}}>{'Cost: '+money(item.cost)+' · Value: '+money(qty*item.cost)}</div>}
                   </div>
                   {bestSellers.includes(item.size||'') && <span style={{fontSize:10,fontWeight:700,background:'#fef9c3',color:'#854d0e',borderRadius:6,padding:'2px 7px',flexShrink:0}}>🔥 Best</span>}
@@ -1888,7 +1892,7 @@ function Inventory(props) {
                 </div>
                 {isEditing && (
                   <div style={{padding:'0 14px 14px',display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:8,alignItems:'center',background:'#fafafa'}}>
-                    <input value={item.size} onChange={function(e){update(item.id,{size:e.target.value});}} placeholder="225/55R17" style={{border:'1.5px solid #ddd',borderRadius:9,padding:'9px 12px',fontSize:15,fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,outline:'none',width:'100%'}}/>
+                    <input autoFocus={!item.size} value={item.size} onChange={function(e){update(item.id,{size:e.target.value});}} placeholder="e.g. 225/55R17" style={{border:'1.5px solid '+(item.size?'#ddd':'#f07800'),borderRadius:9,padding:'9px 12px',fontSize:15,fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,outline:'none',width:'100%'}}/>
                     <input value={item.cost||''} type="number" min="0" onChange={function(e){update(item.id,{cost:Number(e.target.value||0)});}} placeholder="Cost $" style={{border:'1.5px solid #ddd',borderRadius:9,padding:'9px 12px',fontSize:14,outline:'none',width:'100%'}}/>
                     <button className="btn danger sm" onClick={function(){remove(item.id);}}>Remove</button>
                     <input value={item.notes} onChange={function(e){update(item.id,{notes:e.target.value});}} placeholder="Notes" style={{border:'1.5px solid #ddd',borderRadius:9,padding:'9px 12px',fontSize:14,outline:'none',width:'100%',gridColumn:'1/3'}}/>
