@@ -924,14 +924,6 @@ function Dashboard(props) {
         <div className="kpi"><div className="kpi-label">Fixed Exp.</div><div className="kpi-value">{money(fixed)}</div><div className="kpi-sub">weekly</div></div>
         <div className="kpi"><div className="kpi-label">Net Profit</div><div className={'kpi-value '+(totals.net>=0?'green':'red')}>{money(totals.net)}</div><div className="kpi-sub">after all costs</div></div>
       </div>
-      {totalQty > 100 && (
-        <div style={{background:'#fef9c3',border:'1.5px solid #fde047',borderRadius:10,padding:'10px 14px',marginBottom:10,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div>
-            <div style={{fontWeight:700,fontSize:13,color:'#854d0e'}}>⚠️ Stock count looks off ({totalQty} tires)</div>
-            <div style={{fontSize:11,color:'#92400e',marginTop:2}}>Tap "Reset Stock" in Settings to restore your correct list</div>
-          </div>
-        </div>
-      )}
       <div className="kpi-grid three" style={{marginBottom:10}}>
         <div className="kpi"><div className="kpi-label">Direct Costs</div><div className="kpi-value">{money(totals.directCosts)}</div><div className="kpi-sub">travel + parts</div></div>
         <div className="kpi"><div className="kpi-label">Avg/Job</div><div className="kpi-value">{money(avgProfit)}</div><div className="kpi-sub">gross profit</div></div>
