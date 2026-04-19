@@ -290,7 +290,23 @@ function fbListen(col, cb) {
 }
 async function fbSet(col, id, data)  { try { if (col) await col.doc(String(id)).set({...data, id:String(id)}); } catch {} }
 async function fbDel(col, id)        { try { if (col) await col.doc(String(id)).delete(); } catch {} }
-async function fbSetAll(col, items)  { if (!col || !items.length) return; const b=_db.batch(); items.forEach(i=>b.set(col.doc(String(i.id)),{...i,id:String(i.id)})); try{await b.commit();}catch{} }
+async function fbSetAll(col, items)  {
+  if (!col || !items.length) return;
+  const b = _db.batch();
+  items.forEach(function(i) {
+    // Strip any non-serializable fields before writing
+    const plain = {};
+    Object.keys(i).forEach(function(k) {
+      const v = i[k];
+      if (v === null || v === undefined) return;
+      const t = typeof v;
+      if (t === 'string' || t === 'number' || t === 'boolean') plain[k] = v;
+    });
+    plain.id = String(i.id);
+    b.set(col.doc(String(i.id)), plain);
+  });
+  try { await b.commit(); } catch(e) { console.warn('fbSetAll failed:', e); }
+}
 </script>
 <script type="text/babel">
 const { useCallback, useEffect, useMemo, useRef, useState } = React;
@@ -857,7 +873,7 @@ function Header(props) {
       </div>
       <div style={{display:'flex',alignItems:'center',gap:8}}>
         <span style={{fontSize:10,fontWeight:700,color:dot}} className={syncStatus==='syncing'?'syncing':''}>● {lbl}</span>
-        {onSignOut && <button onClick={onSignOut} style={{background:'none',border:'none',color:'#444',fontSize:11,cursor:'pointer',padding:'4px 6px'}}>Out</button>}
+        {onSignOut && <button onClick={function(){if(onSignOut)onSignOut();}} style={{background:'none',border:'none',color:'#444',fontSize:11,cursor:'pointer',padding:'4px 6px'}}>Out</button>}
       </div>
     </div>
   );
@@ -1438,24 +1454,78 @@ function Payouts(props) {
 
 // ── Inventory ──────────────────────────────────────────────────────────────────
 const LOW_STOCK = 2;
+const BEST_SELLER_COUNT = 5; // top N sizes by job frequency
 function Inventory(props) {
   const inventory=Array.isArray(props.inventory)?props.inventory:[], setInventory=props.setInventory;
+  const jobs = Array.isArray(props.jobs) ? props.jobs : [];
   const [search,setSearch] = useState('');
   const [editId,setEditId] = useState(null);
-  const update = function(id,patch){setInventory(function(prev){return prev.map(function(i){return i.id===id?{...i,...patch}:i;});});};
-  const add    = function(){const id=uid();setInventory(function(prev){return [{id,size:'',qty:0,cost:0,notes:''},...prev];});setEditId(id);};
-  const remove = function(id){if(!window.confirm('Remove?'))return;setInventory(function(prev){return prev.filter(function(i){return i.id!==id;});});setEditId(null);};
-  const step   = function(id,delta){setInventory(function(prev){return prev.map(function(i){return i.id===id?{...i,qty:Math.max(0,(Number(i.qty)||0)+delta)}:i;});});};
+
+  // Compute best-seller sizes from job history (by frequency of tire size used)
+  const bestSellers = useMemo(function() {
+    const freq = {};
+    jobs.forEach(function(j) {
+      const s = (j.tireSize||'').trim();
+      if (s) freq[s] = (freq[s]||0) + (Number(j.qty)||1);
+    });
+    return Object.entries(freq)
+      .sort(function(a,b){return b[1]-a[1];})
+      .slice(0, BEST_SELLER_COUNT)
+      .map(function(e){return e[0];});
+  }, [jobs]);
+  const sanitizeItem = function(i) {
+    return {id:String(i.id||''),size:String(i.size||''),qty:Math.max(0,Number(i.qty||0)),cost:Number(i.cost||0),notes:String(i.notes||'')};
+  };
+  const saveInv = function(next) {
+    persist(KEYS.inventory, next);
+    // Firebase sync handled by App useEffect
+  };
+  const update = function(id,patch){
+    setInventory(function(prev){
+      const next=prev.map(function(i){return i.id===id?sanitizeItem({...i,...patch}):i;});
+      saveInv(next); return next;
+    });
+  };
+  const add    = function(){
+    const id=uid();
+    setInventory(function(prev){
+      const next=[{id,size:'',qty:0,cost:0,notes:''},...prev];
+      saveInv(next); return next;
+    });
+    setEditId(id);
+  };
+  const remove = function(id){
+    if(!window.confirm('Remove?'))return;
+    setInventory(function(prev){
+      const next=prev.filter(function(i){return i.id!==id;});
+      saveInv(next); return next;
+    });
+    setEditId(null);
+  };
+  const step = function(id,delta){
+    setInventory(function(prev){
+      const next=prev.map(function(i){return i.id===id?sanitizeItem({...i,qty:Math.max(0,(Number(i.qty)||0)+delta)}):i;});
+      saveInv(next); return next;
+    });
+  };
   const totalQty  = inventory.reduce(function(s,i){return s+Number(i.qty||0);},0);
   const totalValue= inventory.reduce(function(s,i){return s+Number(i.qty||0)*Number(i.cost||0);},0);
   const lowStock  = inventory.filter(function(i){return Number(i.qty||0)>0&&Number(i.qty||0)<=LOW_STOCK;});
   const outOfStock= inventory.filter(function(i){return Number(i.qty||0)===0;});
   const filtered  = search.trim()?inventory.filter(function(i){return (i.size||'').toLowerCase().includes(search.toLowerCase());}):inventory;
-  const sorted    = [...filtered].sort(function(a,b){return (a.size||'').localeCompare(b.size||'');});
+  const sorted    = [...filtered].sort(function(a,b) {
+    const aBest = bestSellers.indexOf(a.size||'');
+    const bBest = bestSellers.indexOf(b.size||'');
+    // Best sellers first (by rank), then alpha
+    if (aBest !== -1 && bBest === -1) return -1;
+    if (aBest === -1 && bBest !== -1) return 1;
+    if (aBest !== -1 && bBest !== -1) return aBest - bBest;
+    return (a.size||'').localeCompare(b.size||'');
+  });
   return (
     <div className="screen"><div className="page">
       <div className="kpi-grid three" style={{marginBottom:10}}>
-        <div className="kpi"><div className="kpi-label">Total Tires</div><div className="kpi-value">{totalQty}</div><div className="kpi-sub">{inventory.length+' sizes'}</div></div>
+        <div className="kpi"><div className="kpi-label">Total Tires</div><div className="kpi-value">{totalQty}</div><div className="kpi-sub">{inventory.length+' sizes'+(bestSellers.length?' · '+bestSellers.length+' hot':'')}</div></div>
         <div className="kpi"><div className="kpi-label">Stock Value</div><div className="kpi-value">{money(totalValue)}</div><div className="kpi-sub">at cost</div></div>
         <div className="kpi"><div className="kpi-label">Low Stock</div><div className={'kpi-value '+(lowStock.length+outOfStock.length>0?'red':'green')}>{lowStock.length+outOfStock.length}</div><div className="kpi-sub">need reorder</div></div>
       </div>
@@ -1465,6 +1535,25 @@ function Inventory(props) {
         <input value={search} onChange={function(e){setSearch(e.target.value);}} placeholder="🔍 Search tire size…" style={{flex:1,border:'1.5px solid #e3e3e3',borderRadius:12,padding:'11px 14px',fontSize:15,outline:'none',background:'#fff'}}/>
         <button className="btn primary" style={{flexShrink:0,padding:'11px 16px',fontSize:13}} onClick={add}>+ Add</button>
       </div>
+      {!search && bestSellers.length > 0 && (
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10,alignItems:'center'}}>
+          <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.7px',color:'#999'}}>🔥 Best Sellers</span>
+          {bestSellers.map(function(sz) {
+            const inStock = inventory.find(function(i){return i.size===sz;});
+            const qty     = inStock ? Number(inStock.qty||0) : 0;
+            return (
+              <span key={sz} style={{
+                background: qty===0?'#fee2e2':qty<=2?'#ffedd5':'#dcfce7',
+                color:      qty===0?'#b91c1c':qty<=2?'#c2410c':'#166534',
+                border:     '1.5px solid '+(qty===0?'#fca5a5':qty<=2?'#fed7aa':'#86efac'),
+                borderRadius:999,padding:'4px 12px',fontSize:12,fontWeight:700,
+              }}>
+                {sz} {qty===0?'— OUT':qty<=LOW_STOCK?'— '+qty+' left':'× '+qty}
+              </span>
+            );
+          })}
+        </div>
+      )}
       {sorted.length===0 ? (
         search ? <EmptyState icon="🔍" title="No match" sub={'No sizes matching "'+search+'"'}/> : <EmptyState icon="🛞" title="No inventory" sub="Tap + Add to add a tire size."/>
       ) : (
@@ -1479,6 +1568,7 @@ function Inventory(props) {
                     <div style={{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:15}}>{item.size||<span style={{color:'#ccc'}}>No size</span>}</div>
                     {item.cost>0 && <div style={{fontSize:11,color:'#aaa',marginTop:1}}>{'Cost: '+money(item.cost)+' · Value: '+money(qty*item.cost)}</div>}
                   </div>
+                  {bestSellers.includes(item.size||'') && <span style={{fontSize:10,fontWeight:700,background:'#fef9c3',color:'#854d0e',borderRadius:6,padding:'2px 7px',flexShrink:0}}>🔥 Best</span>}
                   {isOut && <span style={{fontSize:10,fontWeight:700,background:'#fee2e2',color:'#b91c1c',borderRadius:6,padding:'2px 7px'}}>OUT</span>}
                   {isLow&&!isOut && <span style={{fontSize:10,fontWeight:700,background:'#ffedd5',color:'#c2410c',borderRadius:6,padding:'2px 7px'}}>LOW</span>}
                   <div style={{display:'flex',alignItems:'center',border:'1.5px solid #e3e3e3',borderRadius:10,overflow:'hidden',flexShrink:0}} onClick={function(e){e.stopPropagation();}}>
@@ -1650,21 +1740,26 @@ function App() {
         setSync('connected');
       });
       const u2 = fbListen(invCol(), function(docs) {
-        // If we have local v3 inventory already, trust it; otherwise use Firebase
-        const localInv = load(KEYS.inventory, []);
-        if (localInv.length > 0) {
-          // Local v3 exists — local is authoritative (already pushed or will push)
-          setInventory(localInv);
-        } else if (docs.length > 0) {
-          // No local v3 yet — Firebase has old data; overwrite with DEFAULT_INVENTORY
-          persist(KEYS.inventory, DEFAULT_INVENTORY);
-          setInventory(DEFAULT_INVENTORY);
-          fbSetAll(invCol(), DEFAULT_INVENTORY);
+        if (docs.length > 0) {
+          // Sanitize Firestore docs to plain objects
+          const clean = docs.map(function(d) {
+            return {
+              id:    String(d.id||''),
+              size:  String(d.size||''),
+              qty:   Math.max(0, Number(d.qty||0)),
+              cost:  Number(d.cost||0),
+              notes: String(d.notes||''),
+            };
+          });
+          setInventory(clean);
+          persist(KEYS.inventory, clean);
         } else {
-          // Nothing anywhere — use defaults
-          persist(KEYS.inventory, DEFAULT_INVENTORY);
-          setInventory(DEFAULT_INVENTORY);
-          fbSetAll(invCol(), DEFAULT_INVENTORY);
+          // Nothing in Firebase — load from localStorage or defaults
+          const local = load(KEYS.inventory, []);
+          const init  = local.length > 0 ? local : DEFAULT_INVENTORY;
+          setInventory(init);
+          persist(KEYS.inventory, init);
+          if (init.length > 0) fbSetAll(invCol(), init);
         }
       });
       const u3 = fbListen(expCol(), function(docs){setExpenses(docs);});
@@ -1798,7 +1893,7 @@ function App() {
       {tab==='history'   && <History jobs={jobs} settings={settings} onRepeat={function(j){setPrefill(j);setTab('add');}} onDelete={deleteJob} onEdit={handleEdit}/>}
       {tab==='payouts'   && <Payouts jobs={jobs} settings={settings}/>}
       {tab==='expenses'  && <Expenses expenses={expenses} setExpenses={function(e){setExpenses(e);if(user)e.forEach(function(x){fbSet(expCol(),x.id,{id:String(x.id||''),date:String(x.date||''),category:String(x.category||''),amount:Number(x.amount||0),note:String(x.note||'')});});}}/>}
-      {tab==='inventory' && <Inventory inventory={inventory} setInventory={setInventory}/>}
+      {tab==='inventory' && <Inventory inventory={inventory} setInventory={setInventory} jobs={jobs}/>}
       {tab==='settings'  && <Settings settings={settings} setSettings={setSettings} jobs={jobs} setJobs={setJobs} inventory={inventory} expenses={expenses} setInventory={setInventory} onResetInventory={function(fresh){if(user)fbSetAll(invCol(),fresh);}}/>}
       <nav className="bottom-nav">
         {NAV.map(function(item){
