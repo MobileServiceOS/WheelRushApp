@@ -43,15 +43,20 @@
     --green-dim:rgba(34,197,94,.12);
     --red:      #ef4444;
     --red-dim:  rgba(239,68,68,.10);
+    --red-bg:   rgba(239,68,68,.10);
     --amber:    #f59e0b;
     --amber-dim:rgba(245,158,11,.10);
+    --amber-bg: rgba(245,158,11,.10);
     --gold:     #c8a44a;
     --gold-dim: rgba(200,164,74,.12);
+    --gold-bg:  rgba(200,164,74,.12);
 
-    --r1: 22px;
-    --r2: 16px;
-    --r3: 12px;
-    --r4: 8px;
+    --r1:   22px;
+    --r2:   16px;
+    --r3:   12px;
+    --r4:   8px;
+    --r-sm: 12px;
+    --r-xs: 8px;
 
     --sh-card:  0 1px 0 rgba(255,255,255,.04) inset, 0 4px 24px rgba(0,0,0,.5);
     --sh-hero:  0 0 0 1px rgba(79,142,247,.2), 0 8px 40px rgba(79,142,247,.15);
@@ -272,17 +277,14 @@
   /* ── Sticky save ── */
   .sticky-save {
     position:sticky; bottom:0; left:0; right:0;
-    background:linear-gradient(180deg, rgba(10,10,15,.0) 0%, #0a0a0f 12px);
-    padding:0 16px 0; padding-bottom:calc(0px + env(safe-area-inset-bottom));
+    background:var(--bg);
+    border-top:1px solid var(--border);
+    padding:13px 16px;
+    padding-bottom:calc(13px + env(safe-area-inset-bottom));
     display:grid; grid-template-columns:1fr 1fr; gap:10px;
     z-index:50;
-    padding-top:0;
+    box-shadow:0 -8px 32px rgba(0,0,0,.6);
   }
-  .sticky-save::before {
-    content:''; position:absolute; top:0; left:0; right:0; height:1px;
-    background:var(--border);
-  }
-  .sticky-save-inner { display:contents; }
 
   /* ── Buttons ── */
   .btn { border:none; border-radius:var(--r3); padding:15px 18px; font-weight:700; font-size:14px; transition:opacity .1s,transform .08s; letter-spacing:-.1px; }
@@ -1242,7 +1244,11 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
       <div style=${{height:90}}/>
     </div>
     <div class="sticky-save">
-      ${isEditing?html`<><button class="btn secondary" onClick=${cancelEdit}>Cancel Edit</button><button class="btn primary" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Update Job ✓"}</button></>`:html`<><button class="btn secondary" onClick=${()=>doSave(true)} disabled=${saving}>Save + Add Another</button><button class="btn primary" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Save Job →"}</button></>`}
+      ${isEditing
+        ?[html`<button class="btn secondary" onClick=${cancelEdit}>Cancel Edit</button>`,
+           html`<button class="btn primary" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Update Job ✓"}</button>`]
+        :[html`<button class="btn secondary" onClick=${()=>doSave(true)} disabled=${saving}>Save + Add Another</button>`,
+           html`<button class="btn primary" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Save Job →"}</button>`]}
     </div>
   </div>`;
 }
@@ -1309,7 +1315,7 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
         placeholder="Search jobs, tires, customers…"
         style=${{width:"100%",background:"var(--s2)",border:"1px solid var(--border)",borderRadius:14,padding:"14px 18px",outline:"none",fontSize:15,color:"var(--t1)"}}
       />
-    </div></div>
+    </div>
     <div class="chip-row" style=${{marginBottom:10}}>
       ${["All","Repair","Replacement","Pending"].concat(cities).slice(0,9).map(c=>html`<button key=${c} class=${"chip"+(filter===c?" active":"")} onClick=${()=>setFilter(c)}>${c}</button>`)}
     </div>
@@ -1917,7 +1923,23 @@ function App() {
     ${tab==="add"       &&html`<${AddJob} onSave=${saveJob} settings=${settings} jobs=${jobs} prefill=${prefill} onClearPrefill=${()=>setPrefill(null)} editJob=${editJob} onClearEdit=${()=>setEditJob(null)} saving=${saving}/>`}
     ${tab==="history"   &&html`<${History} jobs=${jobs} settings=${settings} onRepeat=${j=>{setPrefill(j);setTab("add");}} onDelete=${deleteJob} onEdit=${handleEdit}/>`}
     ${tab==="payouts"   &&html`<${Payouts} jobs=${jobs} settings=${settings}/>`}
-    ${tab==="expenses"  &&html`<${Expenses} expenses=${expenses} setExpenses=${e=>{setExpenses(e);if(user)e.forEach(x=>fbSet(expCol(),x.id,{id:String(x.id||""),date:String(x.date||""),category:String(x.category||""),amount:Number(x.amount||0),note:String(x.note||"")}));}}/>`}
+    ${tab==="expenses"  &&html`<${Expenses} expenses=${expenses} setExpenses=${updater=>{
+          setExpenses(prev=>{
+            const next=typeof updater==="function"?updater(prev):updater;
+            persist(KEYS.expenses,next);
+            if(user){
+              const prevIds=new Set(prev.map(x=>x.id));
+              const nextIds=new Set(next.map(x=>x.id));
+              prev.forEach(x=>{ if(!nextIds.has(x.id)) fbDel(expCol(),x.id); });
+              next.forEach(x=>fbSet(expCol(),x.id,{
+                id:String(x.id||""),date:String(x.date||""),
+                category:String(x.category||""),amount:Number(x.amount||0),
+                note:String(x.note||"")
+              }));
+            }
+            return next;
+          });
+        }}/>`}
     ${tab==="inventory" &&html`<${Inventory} inventory=${inventory} setInventory=${setInventory} jobs=${jobs}/>`}
     ${tab==="settings"  &&html`<${Settings} settings=${settings} setSettings=${setSettings} jobs=${jobs} setJobs=${setJobs} inventory=${inventory} setInventory=${setInventory} expenses=${expenses} onResetInventory=${fresh=>{
       if(user&&_db){invCol().get().then(snap=>{const b=_db.batch();snap.docs.forEach(d=>b.delete(d.ref));fresh.forEach(i=>b.set(invCol().doc(i.id),i));return b.commit();}).catch(()=>{});}
@@ -1934,7 +1956,38 @@ function App() {
   </div>`;
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(html`<${App}/>`);
+// ── Error Boundary ────────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = {crashed:false, error:null}; }
+  static getDerivedStateFromError(error) { return {crashed:true, error}; }
+  componentDidCatch(error, info) { console.error("WheelRush crash:", error, info); }
+  render() {
+    if (this.state.crashed) {
+      return React.createElement("div", {
+        style:{height:"100%",display:"flex",flexDirection:"column",alignItems:"center",
+               justifyContent:"center",background:"#0a0a0f",padding:"32px",gap:16}
+      },
+        React.createElement("div",{style:{fontSize:40}},"⚠️"),
+        React.createElement("div",{style:{color:"#f0f0fa",fontSize:18,fontWeight:700,textAlign:"center",letterSpacing:"-.3px"}},"Something went wrong"),
+        React.createElement("div",{style:{color:"#8888a8",fontSize:13,textAlign:"center",lineHeight:1.6,maxWidth:280}},
+          "The app hit an unexpected error. Tap below to recover."),
+        React.createElement("div",{style:{color:"#44445a",fontSize:11,textAlign:"center",fontFamily:"monospace",maxWidth:320,wordBreak:"break-all"}},
+          String(this.state.error||"").slice(0,120)),
+        React.createElement("button",{
+          onClick:()=>this.setState({crashed:false,error:null}),
+          style:{background:"linear-gradient(135deg,#5a97ff,#3d7ef5)",color:"#fff",
+                 border:"none",borderRadius:12,padding:"14px 28px",fontSize:15,
+                 fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(79,142,247,.3)"}
+        },"Reload App")
+      );
+    }
+    return this.props.children;
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  React.createElement(ErrorBoundary, null, html`<${App}/>`)
+);
 </script>
 </body>
 </html>
