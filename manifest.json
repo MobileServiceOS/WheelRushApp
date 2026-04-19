@@ -1,22 +1,14 @@
 {
   "name": "Wheel Rush",
   "short_name": "Wheel Rush",
-  "description": "Mobile Tire Repair Business Tracker",
+  "description": "Mobile Tire Repair — Premium Operator App",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#111111",
+  "background_color": "#111113",
+  "theme_color": "#111113",
   "orientation": "portrait",
   "icons": [
-    {
-      "src": "./icon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "./icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "./icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
