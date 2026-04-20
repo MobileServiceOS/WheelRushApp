@@ -586,7 +586,7 @@ const money    = n  => new Intl.NumberFormat("en-US", {style:"currency", currenc
 const clamp    = (n,lo,hi) => Math.min(hi, Math.max(lo, n));
 const SERVICE_OPTIONS = ["Tire Repair","Tire Replacement","Tire Installation","Lug Nut Removal","Valve Stem Service","Roadside Assistance","Other"];
 const PAYMENT_OPTIONS = [{label:"Cash",icon:"💵"},{label:"Zelle",icon:"🟣"},{label:"Card",icon:"💳"},{label:"Cash App",icon:"🟢"},{label:"Venmo",icon:"💙"},{label:"Check",icon:"✍️"}];
-const SOURCE_QUICK    = [{label:"Google",icon:"🔍"},{label:"Google Maps",icon:"🗺"},{label:"TikTok",icon:"🎵"},{label:"Referral",icon:"🤝"},{label:"Returning Customer",icon:"🔁"},{label:"Roadside Flag",icon:"🚗"}];
+const SOURCE_QUICK    = [{label:"Google",icon:"🔍"},{label:"Google Maps",icon:"🗺"},{label:"TikTok",icon:"🎵"},{label:"ChatGPT",icon:"🤖"},{label:"Referral",icon:"🤝"},{label:"Returning Customer",icon:"🔁"},{label:"Roadside Flag",icon:"🚗"}];
 const FLAGS           = [["emergency","🚨 Emergency",20],["lateNight","🌙 Late Night",20],["highway","🛣 Highway",15],["weekend","📅 Weekend",10]];
 const TOP_CITIES      = ["Miami","Fort Lauderdale","Hollywood","Miramar","Hialeah","Aventura","Doral","Pembroke Pines","Coral Springs","Davie"];
 const DEFAULT_TIRE_SIZES = ["245/40R18","225/65R17","225/60R18","215/55R16","255/50R17","225/55R18","235/40R19","245/50R20","275/35R21","275/40R22","275/50R22","195/60R16"];
@@ -945,7 +945,7 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
   const sources=useMemo(()=>{const m={};safeJobs.forEach(j=>{const s=j.source||"Other";m[s]=(m[s]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[safeJobs]);
   const maxSrc=sources.length?sources[0][1]:1;
   const recent=useMemo(()=>[...safeJobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5),[safeJobs]);
-  const top5Tires=useMemo(()=>{const inv=Array.isArray(inventory)?inventory:[];return dedupeInventory(inv).filter(i=>Number(i.qty||0)>0).sort((a,b)=>b.qty-a.qty).slice(0,5);},[inventory]);
+  const top5Tires=useMemo(()=>{const counts={};safeJobs.forEach(j=>{if(j.tireSize){counts[j.tireSize]=(counts[j.tireSize]||0)+Number(j.qty||1);}});return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([size,sold],i)=>({id:"bs"+i,size,sold}));},[safeJobs]);
   const pendingJobs=useMemo(()=>safeJobs.filter(j=>j.status==="Pending"),[safeJobs]);
   const pendingTotal=pendingJobs.reduce((s,j)=>s+Number(j.revenue||0),0);
 
@@ -1061,16 +1061,16 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
       </div>
     </div>
 
-    <!-- Top Stock -->
+    <!-- Best Sellers -->
     ${top5Tires.length>0&&html`<div class="card-anim">
-      <div class="section-label">Top Stock</div>
+      <div class="section-label">Best Sellers</div>
       <div class="card">
         ${top5Tires.map((t,i)=>html`<div key=${t.id} class="card-row">
           <div style=${{display:"flex",alignItems:"center",gap:12}}>
             <div style=${{width:26,height:26,borderRadius:8,flexShrink:0,background:i===0?"var(--blue-dim)":"var(--s3)",color:i===0?"var(--blue)":"var(--t3)",border:i===0?"1px solid rgba(79,142,247,.25)":"1px solid var(--border)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800}}>${i+1}</div>
             <div style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontWeight:700,fontSize:14,color:"var(--t1)",letterSpacing:"-.3px"}}>${t.size}</div>
           </div>
-          <div>${t.qty===0?html`<span class="pill gray">OUT</span>`:t.qty<=LOW_STOCK?html`<span class="pill orange">LOW · ${t.qty}</span>`:html`<span style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontSize:12,color:"var(--t2)",fontWeight:700}}>${t.qty}</span>`}</div>
+          <div><span style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontSize:12,color:"var(--t2)",fontWeight:700}}>${t.sold} sold</span></div>
         </div>`)}
       </div>
     </div>`}
