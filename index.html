@@ -1263,19 +1263,18 @@ function Inventory({inventory,setInventory,jobs}) {
   const jobsArr=Array.isArray(jobs)?jobs:[];
   const [search,setSearch]=useState("");
   const [editId,setEditId]=useState(null);
-  const pendingRef=useRef([]);
   const top5=useMemo(()=>{
     const stats={};
     jobsArr.forEach(j=>{const s=(j.tireSize||"").trim();if(!s)return;if(!stats[s])stats[s]={size:s,jobs:0,qtySold:0,profit:0};stats[s].jobs+=1;stats[s].qtySold+=Number(j.qty||1);stats[s].profit+=jobGrossProfit(j,{costPerMile:0.65});});
     return Object.values(stats).sort((a,b)=>b.jobs!==a.jobs?b.jobs-a.jobs:b.profit-a.profit).slice(0,5);
   },[jobsArr]);
   const bestSellers=top5.map(t=>t.size);
-  const fbWrite=(item)=>{if(!_db||!item.size.trim())return;fbSet(invCol(),item.id,{id:item.id,size:item.size,qty:item.qty,cost:item.cost,notes:item.notes});};
+  const fbWrite=(item)=>{if(!_db||!(item.size||'').trim())return;fbSet(invCol(),item.id,{id:item.id,size:item.size.trim(),qty:Number(item.qty||0),cost:Number(item.cost||0),notes:item.notes||''});};
   const saveLocal=(next)=>{persist(KEYS.inventory,next);};
-  const saveInv=(next,changedId,deleted)=>{saveLocal(next);if(!_db)return;if(deleted){fbDel(invCol(),deleted);pendingRef.current=pendingRef.current.filter(r=>r.id!==deleted);}else if(changedId){const item=next.find(i=>i.id===changedId);if(item&&item.size.trim()){fbWrite(item);pendingRef.current=pendingRef.current.filter(r=>r.id!==changedId);}}};
+  const saveInv=(next,changedId,deleted)=>{saveLocal(next);if(!_db)return;if(deleted){fbDel(invCol(),deleted);}else if(changedId){const item=next.find(i=>i.id===changedId);if(item&&(item.size||'').trim())fbWrite(item);}};
   const update=(id,patch)=>{setInventory(prev=>{const next=prev.map(i=>i.id===id?sanitizeInvItem({...i,...patch}):i);saveInv(next,id);return next;});};
-  const add=()=>{const id=uid();const newItem={id,size:"",qty:0,cost:0,notes:""};pendingRef.current=[newItem,...pendingRef.current];setInventory(prev=>{const next=[newItem,...prev];saveLocal(next);return next;});setEditId(id);};
-  const remove=id=>{if(!window.confirm("Remove?"))return;pendingRef.current=pendingRef.current.filter(r=>r.id!==id);setInventory(prev=>{const next=prev.filter(i=>i.id!==id);saveInv(next,null,id);return next;});setEditId(null);};
+  const add=()=>{const id=uid();const newItem={id,size:"",qty:0,cost:0,notes:""};setInventory(prev=>{const next=[newItem,...prev];saveLocal(next);return next;});setEditId(id);};
+  const remove=id=>{if(!window.confirm("Remove?"))return;setInventory(prev=>{const next=prev.filter(i=>i.id!==id);saveInv(next,null,id);return next;});setEditId(null);};
   const step=(id,delta)=>{setInventory(prev=>{const next=prev.map(i=>i.id===id?sanitizeInvItem({...i,qty:Math.max(0,(Number(i.qty)||0)+delta)}):i);saveInv(next,id);return next;});};
   const deduped=useMemo(()=>dedupeInventory(inv.filter(i=>i.size.trim())),[inv]);
   const totalQty=deduped.reduce((s,i)=>s+Number(i.qty||0),0);
@@ -1425,11 +1424,16 @@ function App() {
     const u1=fbListen(jobCol(),docs=>{setJobs(docs);persist(KEYS.jobs,docs);setSyncStatus("connected");});
     const u2=fbListen(invCol(),docs=>{
       if(docs.length>0){
-        const pending=pendingRef.current||[];
-        const merged=[...docs];
-        pending.forEach(p=>{if(!merged.find(m=>m.id===p.id))merged.push(p);});
-        const deduped=dedupeInventory(merged);
-        setInventory(deduped);persist(KEYS.inventory,deduped);
+        setInventory(prev=>{
+          // Keep any blank/pending rows that exist in current local state
+          const blankRows=(prev||[]).filter(i=>!(i.size||"").trim());
+          const fbItems=docs.filter(d=>(d.size||"").trim());
+          const deduped=dedupeInventory(fbItems);
+          const merged=[...blankRows,...deduped];
+          persist(KEYS.inventory,merged);
+          return merged;
+        });
+        setSyncStatus("connected");
       }
     });
     const u3=fbListen(expCol(),docs=>{setExpenses(Array.isArray(docs)?docs:[]);persist(KEYS.expenses,docs);});
@@ -1496,7 +1500,13 @@ function App() {
 
   // ── Inventory handler ─────────────────────────────────────────────────────
   const handleSetInventory=useCallback(updater=>{
-    setInventory(prev=>{const next=typeof updater==="function"?updater(prev):updater;persist(KEYS.inventory,next);if(user)next.forEach(x=>fbSet(invCol(),x.id,{id:x.id,size:x.size||"",qty:Number(x.qty||0),cost:Number(x.cost||0),notes:x.notes||""}));return next;});
+    setInventory(prev=>{
+      const next=typeof updater==="function"?updater(prev):updater;
+      persist(KEYS.inventory,next);
+      // Only push items that have a size to Firebase — blank rows stay local
+      if(user) next.filter(x=>(x.size||"").trim()).forEach(x=>fbSet(invCol(),x.id,{id:x.id,size:x.size,qty:Number(x.qty||0),cost:Number(x.cost||0),notes:x.notes||""}));
+      return next;
+    });
   },[user]);
 
   const resetInventoryFb=useCallback(fresh=>{pendingRef.current=[];if(user&&invCol())fresh.forEach(x=>fbSet(invCol(),x.id,{id:x.id,size:x.size||"",qty:Number(x.qty||0),cost:Number(x.cost||0),notes:x.notes||""}));},[user]);
