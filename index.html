@@ -8,17 +8,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wheel Rush" />
   <meta name="theme-color" content="#111111" />
-  <title>Wheel Rush â Business Tracker</title>
+  <title>Wheel Rush — Business Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="./icon.png">
   <link rel="apple-touch-icon" href="./icon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="./icon.png">
   <link rel="manifest" href="./manifest.json">
 <style>
-  /* âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-     WHEEL RUSH â PREMIUM OPERATOR OS  v10 (Pro Edition)
-     Premium dark Â· Blue accent Â· Orange CTA Â· Animated Â· Pro Dashboard
-     âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */
+  /* ═══════════════════════════════════════════════════════════════
+     WHEEL RUSH — PREMIUM OPERATOR OS  v10 (Pro Edition)
+     Premium dark · Blue accent · Orange CTA · Animated · Pro Dashboard
+     ═══════════════════════════════════════════════════════════════ */
   :root {
     --bg:       #0a0a0f;
     --s1:       #13131a;
@@ -62,7 +62,7 @@
   .screen { flex:1; overflow:auto; -webkit-overflow-scrolling:touch; background:var(--bg); }
   .page   { padding:20px 16px calc(120px + env(safe-area-inset-bottom)); }
 
-  /* ââ PREMIUM ANIMATIONS ââââââââââââââââââââââââââââââââââââââââââ */
+  /* ══ PREMIUM ANIMATIONS ══════════════════════════════════════════ */
   @keyframes fadeSlideUp {
     from { opacity:0; transform:translateY(16px); }
     to   { opacity:1; transform:translateY(0); }
@@ -136,7 +136,7 @@
     animation:shimmer 3s linear infinite;
   }
 
-  /* ââ Header ââ */
+  /* ── Header ── */
   .header-compact {
     background: linear-gradient(180deg, #16161f 0%, #0f0f17 100%);
     padding: 12px 18px;
@@ -149,7 +149,7 @@
   .header-compact h1 { font-size:16px; font-weight:700; letter-spacing:-.4px; color:var(--t1); }
   .header-compact p  { font-size:10px; color:var(--t3); margin-top:2px; }
 
-  /* ââ PRO DASHBOARD HERO ââââââââââââââââââââââââââââââââââââââââââ */
+  /* ══ PRO DASHBOARD HERO ══════════════════════════════════════════ */
   .pro-hero {
     background: linear-gradient(145deg, #12121e 0%, #0d1020 40%, #101828 100%);
     border:1px solid rgba(79,142,247,.15);
@@ -195,14 +195,14 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center;
   }
 
-  /* ââ Section labels ââ */
+  /* ── Section labels ── */
   .section-label {
     font-size:9px; font-weight:800; text-transform:uppercase;
     letter-spacing:1.8px; color:var(--t3); margin:28px 0 10px;
   }
   .section-label:first-child { margin-top:0; }
 
-  /* ââ Card system ââ */
+  /* ── Card system ── */
   .card {
     background:var(--s1); border-radius:var(--r1); overflow:hidden;
     box-shadow:var(--sh-card); border:1px solid var(--border); margin-bottom:12px;
@@ -213,7 +213,7 @@
   .card-row  { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 20px; border-bottom:1px solid var(--border2); }
   .card-row:last-child { border-bottom:none; }
 
-  /* ââ Hero CTA ââ */
+  /* ── Hero CTA ── */
   .hero-cta {
     background: linear-gradient(135deg, #1a1a28 0%, #14141e 100%);
     border:1px solid rgba(79,142,247,.2);
@@ -229,7 +229,7 @@
     pointer-events:none;
   }
 
-  /* ââ Orange action button / CTA ââ */
+  /* ── Orange action button / CTA ── */
   .cta-btn {
     background: linear-gradient(135deg, #ff8c4b 0%, #ff6420 100%);
     color:#fff; border:none; border-radius:var(--r3);
@@ -241,7 +241,7 @@
   }
   .cta-btn:active { opacity:.85; transform:scale(.97); box-shadow:0 0 0 1px rgba(255,125,59,.4), 0 4px 16px rgba(255,125,59,.3); }
 
-  /* ââ KPI grids ââ */
+  /* ── KPI grids ── */
   .kpi-grid {
     display:grid; grid-template-columns:1fr 1fr;
     gap:1px; background:var(--border);
@@ -257,7 +257,7 @@
   .kpi-value.blue   { color:var(--blue); }
   .kpi-sub  { font-size:10px; color:var(--t3); margin-top:6px; font-weight:500; }
 
-  /* ââ Mini stat strip ââ */
+  /* ── Mini stat strip ── */
   .mini-grid {
     display:grid; grid-template-columns:repeat(4,1fr);
     gap:1px; background:var(--border);
@@ -268,14 +268,14 @@
   .mini-box strong { display:block; font-family:"IBM Plex Mono",monospace; font-size:15px; font-weight:700; color:var(--t1); letter-spacing:-.3px; }
   .mini-box span   { display:block; font-size:8px; color:var(--t3); text-transform:uppercase; letter-spacing:.8px; margin-top:5px; font-weight:700; }
 
-  /* ââ Goal track ââ */
+  /* ── Goal track ── */
   .goal-track { height:3px; background:var(--s4); border-radius:999px; overflow:hidden; margin:14px 0 8px; }
   .goal-fill  { height:100%; border-radius:999px; transition:width .7s cubic-bezier(.4,0,.2,1); }
   .goal-fill.full  { background:var(--green); box-shadow:0 0 8px var(--green); }
   .goal-fill.mid   { background:var(--blue);  box-shadow:0 0 8px var(--blue-glow); }
   .goal-fill.low   { background:var(--amber); }
 
-  /* ââ Stack / job rows ââ */
+  /* ── Stack / job rows ── */
   .stack { display:grid; gap:10px; }
   .job-row {
     background:var(--s1); border-radius:var(--r2); padding:15px 17px;
@@ -290,7 +290,7 @@
   .job-meta  { font-size:11px; color:var(--t3); margin-top:3px; line-height:1.6; }
   .job-right { text-align:right; flex-shrink:0; }
 
-  /* ââ Pending banner ââ */
+  /* ── Pending banner ── */
   .pending-banner {
     background:var(--gold-dim); border:1px solid rgba(200,164,74,.2);
     border-radius:var(--r2); padding:15px 18px; margin-bottom:12px;
@@ -300,13 +300,13 @@
   .pending-banner-title { font-size:13px; font-weight:700; color:var(--gold); }
   .pending-banner-sub   { font-size:11px; color:rgba(200,164,74,.6); margin-top:3px; font-weight:600; }
 
-  /* ââ Source bars ââ */
+  /* ── Source bars ── */
   .source-bar         { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border2); }
   .source-bar:last-child { border-bottom:none; }
   .source-bar-track   { flex:1; height:2px; background:var(--s4); border-radius:999px; overflow:hidden; }
   .source-bar-fill    { height:100%; background:var(--blue); border-radius:999px; box-shadow:0 0 6px var(--blue-glow); transition:width .8s cubic-bezier(.4,0,.2,1); }
 
-  /* ââ Typography helpers ââ */
+  /* ── Typography helpers ── */
   .label { font-size:11px; color:var(--t2); font-weight:500; }
   .sub   { font-size:11px; color:var(--t3); font-weight:500; }
   .mono  { font-family:"IBM Plex Mono",monospace; }
@@ -319,7 +319,7 @@
   .sub.red      { color:var(--red);   font-weight:700; }
   .sub.orange   { color:var(--orange); font-weight:700; }
 
-  /* ââ Pills ââ */
+  /* ── Pills ── */
   .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:10px; font-weight:800; line-height:1.5; letter-spacing:.2px; }
   .pill.green  { background:var(--green-dim); color:var(--green); }
   .pill.red    { background:var(--red-dim);   color:var(--red); }
@@ -328,7 +328,7 @@
   .pill.blue   { background:var(--blue-dim);  color:var(--blue); }
   .pill.gold   { background:var(--gold-dim);  color:var(--gold); }
 
-  /* ââ Fields ââ */
+  /* ── Fields ── */
   .field { margin-bottom:14px; }
   .field label { display:block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--t2); margin-bottom:8px; }
   .field input, .field select, .field textarea {
@@ -341,13 +341,13 @@
   .field textarea { min-height:72px; resize:vertical; }
   .field-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
-  /* ââ Chips ââ */
+  /* ── Chips ── */
   .chip-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:2px; }
   .chip { border:1px solid var(--border); background:var(--s3); border-radius:999px; padding:8px 14px; font-size:12px; font-weight:700; color:var(--t2); transition:all .15s; }
   .chip.active { background:var(--blue-dim); color:var(--blue); border-color:rgba(79,142,247,.3); transform:scale(1.03); }
   .chip.sm { padding:6px 12px; font-size:11px; }
 
-  /* ââ City ââ */
+  /* ── City ── */
   .city-input-wrap  { position:relative; }
   .city-dropdown    { position:absolute; top:calc(100%+6px); left:0; right:0; background:var(--s2); border:1px solid var(--border); border-radius:var(--r2); box-shadow:var(--sh-float); z-index:200; max-height:240px; overflow-y:auto; animation:fadeSlideUp .2s ease; }
   .city-option      { padding:13px 16px; font-size:14px; border-bottom:1px solid var(--border2); cursor:pointer; display:flex; align-items:center; gap:8px; color:var(--t1); transition:background .1s; }
@@ -355,7 +355,7 @@
   .city-option:active { background:var(--s3); }
   .city-section-head{ padding:8px 16px 4px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:var(--t3); background:var(--s3); }
 
-  /* ââ Quick quote ââ */
+  /* ── Quick quote ── */
   .quote-box {
     background: linear-gradient(135deg, var(--s2) 0%, #181824 100%);
     border-radius:var(--r1); padding:18px; margin-bottom:14px;
@@ -377,7 +377,7 @@
   .qq-apply-btn.custom    { background:var(--s3); color:var(--t2); border:1px solid var(--border); }
   .qq-apply-btn.active-sel{ outline:1.5px solid currentColor; outline-offset:2px; }
 
-  /* ââ Src / pay grids ââ */
+  /* ── Src / pay grids ── */
   .src-grid { display:flex; flex-wrap:wrap; gap:7px; margin-top:4px; }
   .src-btn  { border:1px solid var(--border); background:var(--s3); border-radius:var(--r3); padding:9px 12px; font-size:12px; font-weight:700; color:var(--t2); transition:all .15s; display:flex; align-items:center; gap:5px; }
   .src-btn.active { background:var(--blue-dim); color:var(--blue); border-color:rgba(79,142,247,.3); transform:scale(1.03); }
@@ -386,7 +386,7 @@
   .pay-btn.active { background:var(--blue-dim); color:var(--blue); border-color:rgba(79,142,247,.3); transform:scale(1.03); }
   .pay-btn .pay-icon { font-size:18px; }
 
-  /* ââ Sticky save ââ */
+  /* ── Sticky save ── */
   .sticky-save {
     position:sticky; bottom:0; left:0; right:0;
     background:linear-gradient(180deg, rgba(10,10,15,.0) 0%, #0a0a0f 12px);
@@ -399,7 +399,7 @@
     background:var(--border);
   }
 
-  /* ââ Buttons ââ */
+  /* ── Buttons ── */
   .btn { border:none; border-radius:var(--r3); padding:15px 18px; font-weight:700; font-size:14px; transition:all .15s; letter-spacing:-.1px; }
   .btn:active { opacity:.8; transform:scale(.97); }
   .btn.primary   { background:linear-gradient(135deg,#5a97ff,#3d7ef5); color:#fff; box-shadow:0 4px 16px rgba(79,142,247,.3); }
@@ -412,15 +412,15 @@
   .btn.orange  { background:var(--orange-dim);color:var(--orange); }
   .btn.gold    { background:var(--gold-dim);  color:var(--gold); }
 
-  /* ââ Form groups ââ */
+  /* ── Form groups ── */
   .form-group { background:var(--s1); border-radius:var(--r1); padding:16px 18px; margin-bottom:10px; box-shadow:var(--sh-card); border:1px solid var(--border); }
   .form-group-title { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1.4px; color:var(--t2); margin-bottom:14px; }
 
-  /* ââ Success strip ââ */
+  /* ── Success strip ── */
   .success-strip { background:var(--green-dim); border:1px solid rgba(34,197,94,.2); border-radius:var(--r2); padding:14px 16px; margin-bottom:14px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; animation:scaleIn .3s ease; }
   .success-strip-title { font-size:12px; font-weight:700; color:var(--green); width:100%; margin-bottom:4px; }
 
-  /* ââ Bottom nav ââ */
+  /* ── Bottom nav ── */
   .bottom-nav {
     display:flex; background:linear-gradient(180deg,#0f0f17 0%,#0a0a0f 100%);
     border-top:1px solid var(--border);
@@ -448,7 +448,7 @@
   .nav-btn[data-id="add"].active::after { background:linear-gradient(90deg,var(--orange),#ffa060); box-shadow:0 0 8px var(--orange-glow); }
   .nav-btn[data-id="add"].active .ico { filter:drop-shadow(0 0 4px var(--orange-glow)); }
 
-  /* ââ Settings / expenses ââ */
+  /* ── Settings / expenses ── */
   .settings-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--border2); }
   .settings-row:last-child { border-bottom:none; }
   .settings-inp { border:1px solid var(--border); border-radius:var(--r4); padding:10px 13px; font-size:15px; outline:none; background:var(--s3); color:var(--t1); transition:border-color .15s; }
@@ -457,20 +457,20 @@
   .expense-row:last-child { border-bottom:none; }
   .expense-row input { border:1px solid var(--border); border-radius:var(--r4); padding:9px 12px; font-size:15px; outline:none; background:var(--s3); color:var(--t1); width:100%; }
 
-  /* ââ Empty state ââ */
+  /* ── Empty state ── */
   .empty { padding:60px 20px; text-align:center; }
   .empty-icon  { font-size:40px; margin-bottom:14px; opacity:.7; }
   .empty-title { font-size:15px; font-weight:700; margin-bottom:6px; color:var(--t1); }
   .empty-sub   { font-size:13px; color:var(--t3); line-height:1.6; }
 
-  /* ââ Tax box ââ */
+  /* ── Tax box ── */
   .tax-box { background:var(--gold-dim); border:1px solid rgba(200,164,74,.2); border-radius:var(--r3); padding:13px 16px; margin-top:12px; }
   .tax-box .tax-lbl  { color:var(--gold); font-weight:800; font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
   .tax-box .tax-amt  { font-family:"IBM Plex Mono",monospace; font-size:18px; font-weight:700; color:var(--gold); }
   .tax-box .tax-hint { font-size:11px; color:rgba(200,164,74,.6); margin-top:4px; }
   .inline-note { font-size:11px; color:var(--t3); line-height:1.6; margin-bottom:14px; }
 
-  /* ââ Auth ââ */
+  /* ── Auth ── */
   .auth-field { margin-bottom:14px; }
   .auth-label { display:block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:1.2px; color:var(--t3); margin-bottom:8px; }
   .auth-inp2 { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:var(--r2); padding:16px 18px; color:var(--t1); font-size:17px; outline:none; transition:border-color .15s, box-shadow .15s; }
@@ -481,11 +481,11 @@
   .auth-btn-google { width:100%; background:var(--s2); color:var(--t1); border:1px solid var(--border); border-radius:var(--r2); padding:15px; font-size:15px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:18px; transition:all .15s; }
   .auth-btn-google:active { transform:scale(.98); }
 
-  /* ââ Nav logo ââ */
+  /* ── Nav logo ── */
   .nav-logo-ico { display:block; border-radius:5px; }
   .nav-btn.active .nav-logo-ico { box-shadow:0 0 0 1.5px rgba(255,125,59,.4); border-radius:6px; filter:brightness(1.1); }
 
-  /* ââ Responsive ââ */
+  /* ── Responsive ── */
   @media(min-width:600px){
     .app{max-width:480px;margin:0 auto;box-shadow:0 0 80px rgba(0,0,0,.9)}
     html,body,#root{background:#05050a}
@@ -519,7 +519,7 @@ window.onerror = function(msg, url, line, col, err) {
 const html = htm.bind(React.createElement);
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-// ââ Firebase config âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Firebase config ─────────────────────────────────────────────────────────
 const FB_CFG = {
   apiKey:            atob("QUl6YVN5QTdxOHpyOUlJeWd1LTJXZWRzOFZPMlo5eHk5ZEs1MUhF"),
   authDomain:        "wheel-rush-expense.firebaseapp.com",
@@ -571,7 +571,7 @@ async function fbBatch(ops) {
   } catch(e) { console.warn("fbBatch:", e); }
 }
 
-// ââ Storage helpers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Storage helpers ─────────────────────────────────────────────────────────
 const KEYS = {
   jobs: "wr2-jobs-v2", settings: "wr2-settings-v2",
   inventory: "wr2-inventory-v2", expenses: "wr2-expenses-v1",
@@ -580,7 +580,7 @@ const KEYS = {
 const load    = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } };
 const persist = (k, v)  => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
-// ââ Constants ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Constants ────────────────────────────────────────────────────────────────
 const LOGO_SRC = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAB4CAIAAAC2BqGFAABQDElEQVR42u39Z5RkV3XwD+8Tbq5c1TlPd0/OM5ogzSgLlEAogIUAgZGRkQDb5CAyD2BsjAEbhEkiK4BylkYBaSRNzrGncw6V6+Z7wv/DCCFsw0MQNs/7zl6ranX36tVd93f33fucfXZAQgg4JX9+wacQnAJ9CvQpOQX6FOhToE/JKdCnQJ+SU6D/UoX+v34B8ldy8luE0EvvACABQJ58kyd/flJOgf49uP7qhRBCGGP8Bz+UnAspBcb4f5L4XzJoCYAAEIAEKSQgARghRH4TTrVaGxoZnZ6ZLZYq0zOzk1OzM7N53w8YF6HvKqqSsGKZTLKlqb6jo23R/J7583tUTT9pMxnnCBDG/xO40V9kUEkCwgAAQkgRCqRgQjAAAAdWDPIzo1OFoyPFwyfGt+05MD01FTHGuajaXs3xFJVmU+n6uqwVMznQmseKFcd2/HK56vtu3NLam3Jnrl92wZnrzzpjfSyRBADO+f+APfkLBI0ApGSu4IEQglKCcQCl0ZmhgcPH+5/bO3houFDy8HTJdVy7bakRUzI3V6p5QSqR6O3pSKWzTKC87Q+MTOtUxMFpSfCWJEoqEiSdseXQbDhYYL4aS1nWa85bd+3rL+zu6QEAxhgh5P9PQEuQQkouRRh5eT2aA2fIm57YcXD00V0zxyfdWRtJgFjcrFYqbS2Nubr6I8f7h8emFUVdtWJJY1NjseoOjBfHJ6YaxMyr2vzzO2pLMk5cDRWD0KQKVoaBGXKlVFOPjPHnZuKPHhcVYb7h0rNvfNsV9Q2NQkqQ8s+k2n8hoAUAlggJZsv8ITz9FHFOVCvs0UPknh2lWd9UdJ1zVp9Nuo4zMzm+dOnS6Xx5+85dXijXrV83v7uj4gQDE4XR6bluOXptT/l1q3C2wYHIBg6QyoIZB05BTUAsCUkLtAD8KRgdq83E7tmf+PGhbGC1/N11r7vydRedtCR/hIP9fwC0REgKAbUBOf5LMfKASqYjY/79h3IP7HSPDM3W5xKJhFkuVxYu6N138AhE/llnn/n8rgPPb9udzOROW7Myk0kf6xsema0qUemd3fm/OR2nOymoRfAcKODaBPQNo+Ex7jLdRYQTpGqKqqqxemPZIuhtrEJSOFP4p8fn/2B/7LTTVnzxphvMWIJxTl5p1v+boCUgyXxZOYTzz4vyMOIR6TznwFTiu7dtPTE47NcKC3q6ZwrFYql6xsa1z23bVZ9Nbdyw/o67H+gfGm1qm7di2cIg5Lv2HZku22c1B18801m1tlGaFMkxmCkfeQ49up9ORGZTa2bx/Fhryo+pIWa+y1nZg6mifrCP8xBWL8GvXefjtHdstvtjj+WEVf/NL76vubXtFdfr/w3QCEkhJPelP47tQ2DPcmZQn4da8y92Fx9+5EmsoKrjLluydM++/eVS8aorL3/48aeTMWvDhtPuvOehqakZjvCGDafZbrR739FqIK6Z73918lq8KeOzQE+4s7vU7zwupzh5zUr1rB7sR8UTJe/4sDc+6oaRjOuop4H0NuGe9kRRpu/fpw5NyUs36BvWeSVW/8H7c6NO4kf/ftNjc8sry/p/FjRCILjkvoiqKJwAewqqNVmZoMX9FUf/7gti74Tb39U7NDj0qvPOeWHHriOHj1xxxte2L6nqT5z4cWv/v6Nb+8fHE9nG1qa61w/2L33sMPRdT3Vr5w/R5LpQI20ev+XP9RuPx579rgsiXavoq8+dnZhw96YwUBgAAIAAGQAFKnpMesXrcOv/VVnYHIfPMxd15X5m3nzAZ68gMPtfZXUj/7j8+kszkhxCvlG//HQCMAKSIHRAQUQTCDJg/CxCE5vZ8QbySx+Vt39o1XRF1H15Ejhy97zSUHDx05cODAO9/5jvseerxaKpWXLFnzjm9/INWXT6etv+ckdpXz+cssuerxSKpWXLFnzjm9/INWXTaetv+ckdJVE5eevJdHfafu+a6qy86d9OaNpaGl+X1y99Vw8IBqJT/saDptVnzHTsHvnTcfXeT+vrGlnf22Ft2j/0NF0lTR8BAgqGZV52/LhQBAy1AihARI7i5LT3o+4Zu3bHvcOHg4fVf/OAgRJFi3XLXwz/95Gfe9ffvfsP1b4lA7Dg6oArRNn+eBDHH+PS2fd0Ra12xGDrbHv7Rz7OLevq5XwjsrqXzPn3kMayoZTAfvOZvO5p7JhSrAhSB4gMw4OPAD935IK5rEAx3JZyNuIi3hSBgzwmthjTU0fhcf/nxO4UjjP4yHqqSyUr0dEm7F3QAAC0iMYysOEnGUDwJhoGNGNdMqZBImtLXgIfhrAOuG/o+qBo01iFKIYqka0OllFDw8rVdaxedfcbapY116anZ0pNb91mmRgnqbG9e2NuuqepvBY0AIgkCgEh5SS554Pzlnzg6+tW+qU8PsmXN9SvGJ1MqxaYxKXDIqEBImHIc1KdG5hpD3rWgLQxCCqEU0gH91l88FEvGm5ctCKRfRuYT92+xj/Q1dbbZIGqSbH1h17z2piCTm/KrrhB/941PGqlEDMyHBvrk3Q9Hp686SnRkEgFoFFgIsq8wU9m1b/Yd1zy6dUd1bKQ2NWePjFfHxgsTU8GBI2TT+cgPdLf6xbvRkXxi0sFHZx1YWCfPOGv6zqFX3a8B1QEhQArEdLogy9NN0kribJprGRAK45xoknp+mJ8xnWptTjRoRxfXz4xMm397eaWnrppJR9++K3XrC70krknXJjxsa6yf19OVrssOzBSf/OYdx/pHMMKrF3WtXzF/3cqFuqa+fPPy32s0QTDNeCARSDlPJTcvn/dvy7u2TBfvm6v17XAUhTLLmmYhFgQhIIKFav3X/v1rHzp7Xc/ChaEMGcZUo7t9Z/e9Ty5Y1MsacoXIOczt4b1HtMZ5paW9R6JqUckMPr977dple4kyR3QNdGHiCDwO8NAvHtYt8/mhSTm5pzpTqI5N2cPjtfEJe2QUjU/0f+af+h0XIAAQABKAgmqg+Qthw3rywi+PlsKPH0iBToAq0NoGbb1gB9C7EiZngVMgBqQ0YIxhbAGrQ9O1vtFVnc6K5ikRhrc/lat55Ll/OzYyq73mXSve+dGpy84Y//bdzTdePvOa9zb95EMjV64VP3vEpQZwMxUq2gAjAzuHwT4AKXP9onmf+8BfX3PZ2a2Nud8sCfqdpoMANBB8NGSHA/7dilMP4qKYcWFD+sLG7He3xz6LkTCMIIpUTDhIohv3DA8c/N5Px8/d2ABgg5SCYRy/f+8+dviw+pH3HAQIFHXf0BgbGE6cf8ZUc0cBgkm34vcPzVx05tMHDnrDI2GxUpmYskcmakNj5f2HUa36yPoLIagCMAAMoIGqQMxCuRQhGLc2I8NCRkxoltBjQk9IzeD7h0Fk4by/gigAVwVdxSTCts+mj5uitmkjWtZWQTD9s3v1tYudv39LEVWD8Wnx2IHMNz9e+dfbrY+9vtRoyUKgZyiYDRHJspUdtV179QxxvRPBuxaX+rfpH721lbQ0hImEEDwV09vrk+sWtG9eOX/Vwvb6tAnAak5+dDJIptKGolBCXr5/+a0FnQpGC1WFcxCC7oyCT8+WGyW/srnx2GRBiccmER2WkgJwwavYuO07P0fViRNBmGIsL5hKMEPGrgeeAPDDTWsOMlZ0vQNPPo882/PcBz//ZTE0Ue0fhLHxvo9+oc91ILIBAgAEYIAZI3U50dCBdROnsyQeR6omJGGBAC+Qfsg9xP0IQgQBASUC4iPFNVmtLW3HLLbvMGrLyhteZzdYhZxS+dC3Go4cz15xReHL7525+RfWx9+S71SSVgPOKM7XH04eGbQ2nRbYg87E7thgSs5Owds3Fr98c+Km11S6s5Wekv3czvhl9cFtP403EragGA3kEzzrZgG3NGTmtdQtbMs1ZQzkl8fHkefEGhqaWpo7DMOB/24zTn9XDzAEAsH+ubLv+ktSpqbSY56/a2CIJeN7eDTHIsBENWI7R4dHbr1XIuOEF8yj+ggyMINjE8PTDzyFzezwv3xn8LNf98fHZT4PWHiPPTLx2J0AFHAM1dfTZAwl5qFMSsQSYCSQpgukCU4kY8h1ecVmx6pQnYPQA8VFqia5XNVRaWplbfWsIeYePgEbFzu3Ppb83ieLk3lYs6Dy0/vicyx3/YWFz3wzPplPD7uNYKnre0cr/cGRrcl9OfWxHeb7Li4Xh/DSznDnkLnSdWs76IIUe+v32z60pJQYCjdpau64uDRViR+Ufcc0YTvfPdI4FugfbJsyqCdBrUNRq8KbgNVrxpIFixctXtrU0PCyPaH8w0qUT6bsrTHVho76H03kH6jY/Tyqmk4wMtrU2zFGtNBKV1lQtdnzX79FlqqotWf3rfcc33PIHxyJ8qVgdFTm82BZzrPPA0FU16ChHqWyOB6X6SxOZ7Cms0iGjgQ7hJoN+RI4s1CNEI3iiss87nmg0OjaS8I1C/y2nHPPk/S7jy+MxyqfefP4+aeVynPyyz9OX3KGXNBu7z6qdFrlqz/c9cMPhCJCC+LFuT5nVQMqzCVdm4IWLA3sE3vol14123dE2340ftbqiX/ZlfIYXegH64v2t3alvjK0qDuX10vRxme7xkPrkgP544H5wFhqHKzto02JVmtJmuxLt37kLLU+2zh/6equhSva5y8HYr4E9/86Y+S3NihEAABIwq/zE3zBx6V826VvfqFYaLz0gujEoDM1E05O8b4B6JiPEIj+PQDBiybViNOGdlTXhnQTFC0MFdBVTUVBwYdKCWwbcKQjZ0F9ZX6Tq2ri0e3WvHb+N5eWbr43d8vHp9/4qaaj/fVrls89/60TX/hOvFRUthzMHJnOUSVkZX/3Px+/6/nk53/Q9eg/HTo6huZGlHdvLrMymXWVTT9rP/LmocfGzcf649MOfa7SnFOcubP2bnq6w1TFVxZPf+xY3fXN1SmOy4Dvn0nVfKVfJmw9C14FIqxaamsSJ+NkXqPZliHtccjFVcvS4pkGHmvwkz2J5vld7Z2NCQ3CCAlOCCGUoj+whuU31NkRosxFXsg9fnjY8R0v5IxLxic0ixx4fnLHNoAAQAUrgTvaRX2jxARiFhGI6glETOH6YaEMsy6hjsqdM3rtuTnWdwJdf6V/5dnVii/+4avNq5eKH31u8u4t2rXn5L/4vWygKJuXVx5+XmszKhOlHmRaS+qHYSxYEjcGq6K/mEVJizErm5nqng23H0wodWLdlHPnjsz19c6/3pY74dDbV06cF7NhkC3zneXN/g/GUs+VpBDyNc+27mcpVyjn7kkWQLv/eAcIAhIDQaBAl8XPsEpLOmBxTrZmg0QciBUrAKkqdSWjYZRmCzTjofTC+rbV81p6knoSeaLqKKpOVe337/xDf3uaKRIIqowN2N5jxeqxis3cABhXrno9Xr+RTE8BJsiwAKm8EuCqSysujXHsuLKaF36ZlfKfvWb43KX2pZ9sufGvqp//WP6d783ccCF+zTr3c7ckvnTD5OevRgNVJRio7dqin22SB56zPvza0tOPacuVYOejerUQAy1YD7WDDxg/3J7QJCZRwAFzj63PVLV9cu+UkdGDo3vpvgnzfps/Uk0f5YnX7tUOsfj6ffUeKDWmAKZKRrED+kAYVwjTBHeF0Yp4s1Zr1fk8S3QnWEcK5RIEKbiE9FkldVTJ1rTWCcjmaapGLIWY8+pSK9sb17Y19KQ0Gnph4GEjppoJTOgf1POH/ja7YWLUTpR2RTkzZn6+NecCOgGwww1uH5l+yooJYsGJcTg0AnNlFWON+zR0vVrRdysIIi6pqUdvW1moj0ebFlf+alm5/FQAZfH29bOnf2Lp4cP1b+0sKI6/BAfHnjcsQ3bNRavMaNmYf/OB2AVZf+lk9P11B4drqKfmtZPoA6m5QUd9KEhSoiIFH62o529rL2ppgvDmE6u4YuxwKZgaUPwIq6d6aHDPYn4reGYYKXZgActSXq/ypgS0p6E5iVIJBRS1FpGJSDsIsbFKopJqmTNy5XjWVi0vRGmi9KYS5/S2b+xpW1CX0JkfuDVu+8hKmskExujFyWh/ehsJKUGA5EJECDkY93H+wND4QzuOHt26n+05BAVbl6Q1m1qysLX9tC7P8/L54oFjA45HUCxFMOER7k2PRIPyl2Xjs+tLM3twAHo0h+MHJfGjS1cObvK8q1+o/7f1hfF+bXEx2LtLHZwGl8KhaSPuyYkCzEmxrWj+YiIlqVKRekHqQUMGmRZwNuQnhxDWsVAE0xVIMDfDvazv55ibjDyVRYCAK5RQkkySuiSJaVy3CKZ6wHBF0r5AHRmlJWxUE2kn3WibGS9WXwQsFJLGfG3WPLur5fT58+Y35SzMQqdsz5RCI26mGk3Dgl9N9XtlOqJLgJeqcIdc/6FtB26994ndO4/ksHpaT8e6ld2rVvYu6GlTFLJt/4nHtx58bs+Jvok8UFVEEQp9JfK8qvv38/uubZ/pq2mXdbo/PhA7LRVe8GzbPSsmumJBPiJfHMw9WE68s6XoSTLDyBPlXEmqcRm6WONEAYEBFCAIFAUUFZAggiW5l4zclPAacdiOgzrw0tJP8ogK7gN2iOJQraiZJaJ7VowRIimRlLoMqqH0GPJDFCHKVFVaJsnVkWTapsYMQwDS0OXGlsylS+adM7+jI52xKHiVWc+pKGbKyDTp8czJnbQ82SvhlWo9f3KNUa7UCqXq8f7RvuPDYcjmdTRvWLu0tb0BAMquf9uWXVse2bZ3f//wRF64LuiUYoGZL1nEhcAqZiH/YscJkHy3Y9Up4c6ykSTwhNdgSrcJ2RPc8I16UBF4EjABBEAkCA5CAuIK8ASKEjhKoSgLQT1mbSRqRUEDZTHCDMQARFkqZalPgz6qJAdpYhLFSkrMIzTClBE1QooAwiMOvq+xUOEBBkkTMZnNhrGko5pg6KDwpni0oQ6f2ZrZ1L1gcUuPgalTK4ROiUukpxqNdDPVDPjVAEX4kwdX/AZoKaXj+lMzBccLpBD1delMOmHqWkXCsyeGX9jfv2vPkT1HB/NVD6csms0IABl6/GSLqLihxS0skYhCZXhU7t7rOBGEEgQHwwBFBRUBEyA4UIIo6BCkVZbEQQq5WRI1GqJd5w1KVIfDHGFJxHTBiZARgCtJkWvT0hhC1gjJjNLsiEjM0pStxZikIAEQAsYBI5AIQp94LnIdGvoEARi6F0uIWApSGYjrlhEtb0DndKY2dzWtbGttjNdDgN3SXKUwJaU0c21Wrk0xYi/F70+O+3xFesb/BmghpJACIURf1pTaD8JiqTpRLB0JgilNn0taY4DG3XAi4gUWyCCor1UTpYIyM2cPj7tzVVG2o4odAahJw0ybWkJVuZv1q2nwm2WpFcqN1GvETha79TSKI6ZzhiIZSFTzUMWnxYjmQ3UmVEfAGoTkhJqb0XNFK1vRUpzo4DEIGEgOQgIGDBJxBlygkCHPhiiSIBlBEI9DOgXpLDTUp+JGjynXZsi5rebq1obuhjZAFtjVSmG6Wp7jURBL18cburRY+td98n5nd8hX0nQIIV6cNfqbI1xPSiUIT1QqQ4XC0NRgdW56ulQd8cVswFTB0pGdEtWEGjYSLyWDrLTT2E8z22QeYSHmTLIoDIXtQcFBs75aiNRZbo0HxizT55BVURO2lfSNBOgGWHFQNWAMIgaBD65D/AAjAEWRiooIkUzwMJRBCAhAI2CakM1AXSbb3NyWTbYRtlTx18SixRm1p75OMdPAlaBcrZRmfbuAMTazTbG6DtWIv8RXAvz5xkf+Xq3rf+1p0cnm0ZJFIY8YomqBqseZGA2jCRZM+8HkXHF2amZmds4tFJHjIdsG2wXH427IuYw4hEwyREOiSqIAVcDQwbTA0sHSwNCBc4h85HjIccH1MecgJSCKFSpVDek6qCqXkjMOnAPBENcbW+rqm+raU8l2y+w1SI8aNYQzdWIuKWumYalmLpDxqisD1xaBp8djVqbBSDcTqr6Mr/yjO46+wqD/20a2AOBLORayw16w23a31/wjXjgTMiYkMAlRCExAFIEXgh+AH0IUQRQBQkAJSAFcQMQgCCFiEEbgBxBGSEiEJCCMFEU1LRIzQVMDQSIhASQgAIqpqXfmEutbc5sa0qvqkk0KUgKH2EXkznG/yEIbiZCqMY7jABqlJlYMLRZXzbhmJV5aVp20D/+Tw33/pGEM6GWvqhBDIdvl+ft8fyqM/IhxLqWQkZCRFHYYiSCiEVMjpgipREwJuSYgTpGpKnFdkapWQVDCOA94lsmCH/qRCEIeuoEJMmep3WlrcS65PGkutLR5GmnAENTKtudEPPTcqkKFrlm6YqpaDGGdhx5CUjViRDcJob9hHP4M9vfPDvrlHW/wyy/g5Ut6CQDA5Ys9nk/mgjAAX0pPorwUEyEb8cNBNxx22YjjV0NmStGk0TZd6zJot6n1xvROU0tghEFKxtww9IIgjEJN01SMNUpURQUJEkBiKqXAlCL4dSLLizNiXrn1w/8O6P9E/OV9WNF/0f1Igi+kK4TLeY2LcsRrYcSElAAaQmlVMQi2MKrXaEKhv/EHhGDyZGY0UIzoy87ifuXE8K9/XQqQ8JcA988C+nffg5dwo5cqOX6nCCmllOJF74vQy26efNnY+t/8J38pTP/XQP829FLCy2unEbz4xKO/cGZ/hm67f7bb+2u1/v89pP+X7gan5BToU6BPySnQp0CfAn1KToE+BfqUnAJ9CvQp0KfkFOhToE/JKdCnQJ8CfUpOgf5/X/4/o+/eJn6t39YAAAAASUVORK5CYII=";
 const TODAY    = () => new Date().toLocaleDateString("en-CA", {timeZone:"America/New_York"});
 const uid      = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -588,9 +588,9 @@ const r2       = n  => Math.round((Number(n||0) + Number.EPSILON) * 100) / 100;
 const money    = n  => new Intl.NumberFormat("en-US", {style:"currency", currency:"USD"}).format(Number(n||0));
 const clamp    = (n,lo,hi) => Math.min(hi, Math.max(lo, n));
 const SERVICE_OPTIONS = ["Tire Repair","Tire Replacement","Tire Installation","Lug Nut Removal","Valve Stem Service","Roadside Assistance","Other"];
-const PAYMENT_OPTIONS = [{label:"Cash",icon:"ðµ"},{label:"Zelle",icon:"ð£"},{label:"Card",icon:"ð³"},{label:"Cash App",icon:"ð¢"},{label:"Venmo",icon:"ð"},{label:"Check",icon:"âï¸"}];
-const SOURCE_QUICK    = [{label:"Google",icon:"ð"},{label:"Google Maps",icon:"ðº"},{label:"TikTok",icon:"ðµ"},{label:"ChatGPT",icon:"ð¤"},{label:"Referral",icon:"ð¤"},{label:"Returning Customer",icon:"ð"},{label:"Roadside Flag",icon:"ð"}];
-const FLAGS           = [["emergency","ð¨ Emergency",20],["lateNight","ð Late Night",20],["highway","ð£ Highway",15],["weekend","ð Weekend",10]];
+const PAYMENT_OPTIONS = [{label:"Cash",icon:"💵"},{label:"Zelle",icon:"🟣"},{label:"Card",icon:"💳"},{label:"Cash App",icon:"🟢"},{label:"Venmo",icon:"💙"},{label:"Check",icon:"✍️"}];
+const SOURCE_QUICK    = [{label:"Google",icon:"🔍"},{label:"Google Maps",icon:"🗺"},{label:"TikTok",icon:"🎵"},{label:"ChatGPT",icon:"🤖"},{label:"Referral",icon:"🤝"},{label:"Returning Customer",icon:"🔁"},{label:"Roadside Flag",icon:"🚗"}];
+const FLAGS           = [["emergency","🚨 Emergency",20],["lateNight","🌙 Late Night",20],["highway","🛣 Highway",15],["weekend","📅 Weekend",10]];
 const TOP_CITIES      = ["Miami","Fort Lauderdale","Hollywood","Miramar","Hialeah","Aventura","Doral","Pembroke Pines","Coral Springs","Davie"];
 const DEFAULT_TIRE_SIZES = ["245/40R18","225/65R17","225/60R18","215/55R16","255/50R17","225/55R18","235/40R19","245/50R20","275/35R21","275/40R22","275/50R22","195/60R16"];
 const LOW_STOCK       = 2;
@@ -616,7 +616,7 @@ const EMPTY_JOB = () => ({
   emergency:false, lateNight:false, highway:false, weekend:false,
 });
 
-// ââ Business logic âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Business logic ───────────────────────────────────────────────────────────
 const jobDirectCost  = (j,s) => r2(Number(j.miles||0)*Number(s.costPerMile||0.65)+Number(j.tireCost||0)+Number(j.miscCost||0));
 const jobGrossProfit = (j,s) => r2(Number(j.revenue||0)-jobDirectCost(j,s));
 const weeklyFixed    = s => r2((Array.isArray(s.expenses)?s.expenses:[]).filter(e=>e.active).reduce((t,e)=>t+Number(e.amount||0),0)*12/52);
@@ -643,7 +643,7 @@ function weekLabel(s) {
   const d = new Date(s+"T12:00:00"), e = new Date(d);
   e.setDate(e.getDate()+6);
   const f = dt => dt.toLocaleDateString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric"});
-  return f(d)+" â "+f(e)+", "+e.toLocaleDateString("en-US",{timeZone:"America/New_York",year:"numeric"}).split("/")[2];
+  return f(d)+" – "+f(e)+", "+e.toLocaleDateString("en-US",{timeZone:"America/New_York",year:"numeric"}).split("/")[2];
 }
 function nextFriday() {
   const now = new Date();
@@ -713,7 +713,7 @@ function generateInvoicePDF(job,settings) {
   doc.setFillColor(...ORANGE);doc.rect(0,42,W,3,"F");
   try{doc.addImage(LOGO_SRC,"PNG",M,7,24,24);}catch{}
   doc.setFont("helvetica","bold");doc.setFontSize(18);doc.setTextColor(...WHITE);doc.text("Wheel Rush",M+30,19);
-  doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(180,200,220);doc.text("Mobile Tire Repair  Â·  Miami, FL  Â·  305-897-7030",M+30,27);
+  doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(180,200,220);doc.text("Mobile Tire Repair  ·  Miami, FL  ·  305-897-7030",M+30,27);
   doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(...ORANGE);doc.text("INVOICE",W-M,19,{align:"right"});
   const invNum="WR-"+(job.date||"").replace(/-/g,"")+"-"+(job.id||"").slice(-4).toUpperCase();
   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(180,200,220);doc.text("#"+invNum,W-M,27,{align:"right"});
@@ -723,7 +723,7 @@ function generateInvoicePDF(job,settings) {
   if(job.customerPhone){doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(...GRAY);doc.text(job.customerPhone,M,y+14);}
   const dbX=128,dbW=66;
   doc.setFillColor(...OFFWHITE);doc.roundedRect(dbX,y-5,dbW,34,3,3,"F");
-  const details=[["Date",job.date||""],["Location",(job.area||"â")],["Payment",(job.payment||"â")],["Status",job.status==="Pending"?"PENDING":"PAID"]];
+  const details=[["Date",job.date||""],["Location",(job.area||"—")],["Payment",(job.payment||"—")],["Status",job.status==="Pending"?"PENDING":"PAID"]];
   let dy=y+1;
   details.forEach(([lbl,val])=>{doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(...GRAY);doc.text(lbl,dbX+6,dy);doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(...(lbl==="Status"?(val==="PAID"?[0,120,60]:[200,30,30]):NAVY));doc.text(val,dbX+dbW-4,dy,{align:"right"});dy+=7.5;});
   y+=38;doc.setDrawColor(...LGRAY);doc.setLineWidth(0.3);doc.line(M,y,W-M,y);y+=8;
@@ -745,7 +745,7 @@ function generateInvoicePDF(job,settings) {
   const fy=272;
   doc.setFillColor(...NAVY);doc.rect(0,fy,W,25,"F");doc.setFillColor(...ORANGE);doc.rect(0,fy,W,2,"F");
   doc.setFont("helvetica","bold");doc.setFontSize(10);doc.setTextColor(...WHITE);doc.text("Thank you for choosing Wheel Rush!",W/2,fy+10,{align:"center"});
-  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(180,200,220);doc.text("Mobile Tire Repair  Â·  We Come to You  Â·  305-897-7030",W/2,fy+17,{align:"center"});
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(180,200,220);doc.text("Mobile Tire Repair  ·  We Come to You  ·  305-897-7030",W/2,fy+17,{align:"center"});
   return doc;
 }
 function sendInvoice(job,settings) {
@@ -762,9 +762,9 @@ function migrateOldJobs() {
   return mg;
 }
 
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// ââ COMPONENTS âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ══════════════════════════════════════════════════════════════════════════════
+// ── COMPONENTS ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
 
 function EmptyState({icon,title,sub,action,branded}) {
   return html`<div class="empty page-enter">
@@ -776,7 +776,7 @@ function EmptyState({icon,title,sub,action,branded}) {
   </div>`;
 }
 
-// ââ Animated Progress Ring ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Animated Progress Ring ────────────────────────────────────────────────────
 function ProgressRing({size,stroke,pct,color,children}) {
   const radius = (size-stroke)/2;
   const circ = 2*Math.PI*radius;
@@ -791,7 +791,7 @@ function ProgressRing({size,stroke,pct,color,children}) {
   </div>`;
 }
 
-// ââ CityInput âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── CityInput ─────────────────────────────────────────────────────────────────
 const CITY_LIST=["Miami","Miami Beach","North Miami","North Miami Beach","Miami Gardens","Hialeah","Hialeah Gardens","Opa-locka","Aventura","Sunny Isles Beach","Bal Harbour","Bay Harbor Islands","Surfside","El Portal","Biscayne Park","Golden Beach","Key Biscayne","Doral","Sweetwater","West Miami","Virginia Gardens","Medley","Miami Springs","Coral Gables","South Miami","Pinecrest","Palmetto Bay","Cutler Bay","Homestead","Florida City","Kendall","West Kendall","Tamiami","Fontainebleau","Westchester","Olympia Heights","Richmond Heights","Country Walk","Three Lakes","Naranja","Princeton","Goulds","Fort Lauderdale","Hollywood","Pembroke Pines","Miramar","Davie","Plantation","Sunrise","Weston","Tamarac","Coral Springs","Parkland","Coconut Creek","Margate","North Lauderdale","Lauderhill","Lauderdale Lakes","Wilton Manors","Oakland Park","Pompano Beach","Deerfield Beach","Lighthouse Point","Dania Beach","Hallandale Beach","Cooper City","Southwest Ranches","Hillsboro Beach","Sea Ranch Lakes","Lazy Lake","Pembroke Park","West Park","Lauderdale-by-the-Sea","Other"];
 function CityInput({value,onChange}) {
   const [q,setQ]=useState(value||"");
@@ -806,7 +806,7 @@ function CityInput({value,onChange}) {
       onChange=${e=>{setQ(e.target.value);onChange(e.target.value);setOpen(true);}}
       onFocus=${()=>setOpen(true)}
       onBlur=${()=>setTimeout(()=>setOpen(false),200)}
-      placeholder="Type a cityâ¦"
+      placeholder="Type a city…"
       style=${{width:"100%",border:"1px solid var(--border)",background:"var(--s3)",color:"var(--t1)",borderRadius:"var(--r3)",padding:"13px 15px",outline:"none",fontSize:16}}
     />
     ${!open&&!q&&html`<div class="chip-row" style=${{marginTop:8}}>
@@ -815,17 +815,17 @@ function CityInput({value,onChange}) {
     ${open&&html`<div class="city-dropdown">
       ${!q&&recentCities.length>0&&html`<div>
         <div class="city-section-head">Recent</div>
-        ${recentCities.map(c=>html`<div key=${c} class="city-option" onMouseDown=${()=>pick(c)}><span>ð</span>${c}</div>`)}
+        ${recentCities.map(c=>html`<div key=${c} class="city-option" onMouseDown=${()=>pick(c)}><span>🕐</span>${c}</div>`)}
         <div class="city-section-head">Quick picks</div>
-        ${TOP_CITIES.map(c=>html`<div key=${c} class="city-option" onMouseDown=${()=>pick(c)}><span>ð</span>${c}</div>`)}
+        ${TOP_CITIES.map(c=>html`<div key=${c} class="city-option" onMouseDown=${()=>pick(c)}><span>📍</span>${c}</div>`)}
       </div>`}
-      ${q&&matches.map(c=>html`<div key=${c} class="city-option" onMouseDown=${()=>pick(c)}><span>ð</span>${c}</div>`)}
-      ${q&&matches.length===0&&html`<div class="city-option" style=${{color:"#999"}} onMouseDown=${()=>pick(q)}>Use "<strong>${q}</strong>" â</div>`}
+      ${q&&matches.map(c=>html`<div key=${c} class="city-option" onMouseDown=${()=>pick(c)}><span>📍</span>${c}</div>`)}
+      ${q&&matches.length===0&&html`<div class="city-option" style=${{color:"#999"}} onMouseDown=${()=>pick(q)}>Use "<strong>${q}</strong>" →</div>`}
     </div>`}
   </div>`;
 }
 
-// ââ QuickQuote ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── QuickQuote ────────────────────────────────────────────────────────────────
 function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode}) {
   const customRef=useRef(null);
   const hasInputs=Number(form.miles||0)>0||Number(form.tireCost||0)>0||Number(form.miscCost||0)>0;
@@ -851,7 +851,7 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
     </div>
     ${!hasInputs?html`<div style=${{textAlign:"center",padding:"8px 0"}}>
       <div style=${{fontSize:13,color:"var(--t2)",fontWeight:600}}>Enter job details above</div>
-      <div style=${{fontSize:11,color:"var(--t3)",marginTop:4}}>Miles Â· Tire cost Â· Misc â auto-calculates</div>
+      <div style=${{fontSize:11,color:"var(--t3)",marginTop:4}}>Miles · Tire cost · Misc → auto-calculates</div>
     </div>`:html`<div>
       <div class="qq-suggested">
         <div class="qq-suggested-label">${priceMode==="custom"?"Custom Price":priceMode==="premium"?"Premium Price":"Suggested Price"}</div>
@@ -865,9 +865,9 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
         <span class=${"qq-dec-badge "+decCls}>${decLabel}</span>
       </div>
       <div class="qq-apply-row">
-        <button class=${"qq-apply-btn suggested press-scale"+(priceMode==="suggested"?" active-sel":"")} onClick=${()=>handleMode("suggested",suggested)}>${priceMode==="suggested"?"â ":""}${money(suggested)}<br/><span style=${{fontSize:10,opacity:.8}}>Suggested</span></button>
-        <button class=${"qq-apply-btn premium press-scale"+(priceMode==="premium"?" active-sel":"")} onClick=${()=>handleMode("premium",premiumPrice)}>${priceMode==="premium"?"â ":""}${money(premiumPrice)}<br/><span style=${{fontSize:10,opacity:.8}}>Premium</span></button>
-        <button class=${"qq-apply-btn custom press-scale"+(priceMode==="custom"?" active-sel":"")} onClick=${()=>handleMode("custom","")}>${priceMode==="custom"?"â ":""}Custom<br/><span style=${{fontSize:10,opacity:.8}}>Enter â</span></button>
+        <button class=${"qq-apply-btn suggested press-scale"+(priceMode==="suggested"?" active-sel":"")} onClick=${()=>handleMode("suggested",suggested)}>${priceMode==="suggested"?"✓ ":""}${money(suggested)}<br/><span style=${{fontSize:10,opacity:.8}}>Suggested</span></button>
+        <button class=${"qq-apply-btn premium press-scale"+(priceMode==="premium"?" active-sel":"")} onClick=${()=>handleMode("premium",premiumPrice)}>${priceMode==="premium"?"✓ ":""}${money(premiumPrice)}<br/><span style=${{fontSize:10,opacity:.8}}>Premium</span></button>
+        <button class=${"qq-apply-btn custom press-scale"+(priceMode==="custom"?" active-sel":"")} onClick=${()=>handleMode("custom","")}>${priceMode==="custom"?"✓ ":""}Custom<br/><span style=${{fontSize:10,opacity:.8}}>Enter →</span></button>
       </div>
       ${priceMode==="custom"&&html`<div style=${{padding:"10px 10px 4px"}}>
         <div style=${{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:".6px",color:"var(--t2)",marginBottom:6,textAlign:"center"}}>Custom Price ($)</div>
@@ -878,7 +878,7 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
   </div>`;
 }
 
-// ââ Auth screen âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Auth screen ───────────────────────────────────────────────────────────────
 function AuthScreen({onAuth}) {
   const [email,setEmail]=useState("");const [pass,setPass]=useState("");
   const [mode,setMode]=useState("login");const [err,setErr]=useState("");const [busy,setBusy]=useState(false);
@@ -893,13 +893,13 @@ function AuthScreen({onAuth}) {
     <div style=${{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",paddingBottom:16}}>
       <img src=${LOGO_SRC} alt="Wheel Rush" onError=${e=>e.target.style.display="none"} style=${{width:80,height:80,objectFit:"contain",borderRadius:18,marginBottom:20,boxShadow:"0 4px 20px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.06)",animation:"scaleIn .5s ease"}}/>
       <div class="shimmer-text" style=${{fontSize:26,fontWeight:700,marginBottom:4}}>Wheel Rush</div>
-      <div style=${{color:"#555",fontSize:13,fontWeight:600}}>Mobile Tire Repair Â· Miami</div>
+      <div style=${{color:"#555",fontSize:13,fontWeight:600}}>Mobile Tire Repair · Miami</div>
     </div>
     <div style=${{paddingBottom:"calc(32px + env(safe-area-inset-bottom))"}}>
       ${err&&html`<div style=${{background:"var(--red-dim)",border:"1px solid rgba(239,68,68,.3)",color:"#f87171",padding:"12px 16px",borderRadius:12,fontSize:13,fontWeight:600,marginBottom:16,animation:"fadeSlideUp .3s ease"}}>${err}</div>`}
       <div class="auth-field"><label class="auth-label">Email</label><input class="auth-inp2" type="email" placeholder="you@email.com" value=${email} onChange=${e=>setEmail(e.target.value)} autoCapitalize="off"/></div>
-      <div class="auth-field" style=${{marginBottom:20}}><label class="auth-label">Password</label><input class="auth-inp2" type="password" placeholder="â¢â¢â¢â¢â¢â¢â¢â¢" value=${pass} onChange=${e=>setPass(e.target.value)} onKeyDown=${e=>e.key==="Enter"&&submit()}/></div>
-      <button class="auth-btn-main press-scale" onClick=${submit} disabled=${busy}>${busy?"Workingâ¦":mode==="login"?"Sign In":"Create Account"}</button>
+      <div class="auth-field" style=${{marginBottom:20}}><label class="auth-label">Password</label><input class="auth-inp2" type="password" placeholder="••••••••" value=${pass} onChange=${e=>setPass(e.target.value)} onKeyDown=${e=>e.key==="Enter"&&submit()}/></div>
+      <button class="auth-btn-main press-scale" onClick=${submit} disabled=${busy}>${busy?"Working…":mode==="login"?"Sign In":"Create Account"}</button>
       <button class="auth-btn-google press-scale" onClick=${google}>
         <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
         Continue with Google
@@ -916,20 +916,20 @@ function Header({syncStatus,onSignOut}) {
   return html`<div class="header-compact">
     <div style=${{display:"flex",alignItems:"center",gap:10}}>
       <img src=${LOGO_SRC} alt="WR" style=${{width:32,height:32,objectFit:"contain",borderRadius:9,flexShrink:0,boxShadow:"0 2px 10px rgba(0,0,0,.5), 0 0 0 1px rgba(79,142,247,.15)"}} onError=${e=>e.target.style.display="none"}/>
-      <div><h1>Wheel Rush</h1><p>Mobile Tire Repair Â· Miami</p></div>
+      <div><h1>Wheel Rush</h1><p>Mobile Tire Repair · Miami</p></div>
     </div>
     <div style=${{display:"flex",alignItems:"center",gap:10}}>
       <span class=${isSyncing?"syncing":""} style=${{fontSize:9,fontWeight:800,letterSpacing:"1px",textTransform:"uppercase",color:isLive?"var(--green)":"var(--t3)",textShadow:isLive?"0 0 8px rgba(34,197,94,.4)":"none"}}>
-        ${isLive?"â Live":isSyncing?"â Sync":"â Local"}
+        ${isLive?"● Live":isSyncing?"○ Sync":"○ Local"}
       </span>
       ${onSignOut&&html`<button onClick=${()=>onSignOut()} style=${{background:"var(--s3)",border:"1px solid var(--border)",color:"var(--t3)",fontSize:10,cursor:"pointer",padding:"5px 10px",borderRadius:7,fontWeight:700}}>Out</button>`}
     </div>
   </div>`;
 }
 
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// ââ PRO DASHBOARD (Redesigned) âââââââââââââââââââââââââââââââââââââââââââââââ
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ══════════════════════════════════════════════════════════════════════════════
+// ── PRO DASHBOARD (Redesigned) ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
 function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
   // QuickQuote state (lives here so it's on Dashboard)
   const [qqForm,setQqForm]=useState({service:"Tire Repair",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});
@@ -943,7 +943,7 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
   const totals=useMemo(()=>weekSummary(weekJobs,settings),[weekJobs,settings]);
   const avgProfit=weekJobs.length?r2(totals.grossProfit/weekJobs.length):0;
   const goalPct=clamp((totals.grossProfit/(settings.weeklyGoal||1))*100,0,100);
-  const jobsNeeded=avgProfit>0?Math.max(0,Math.ceil(((settings.weeklyGoal||0)-totals.grossProfit)/avgProfit)):"â";
+  const jobsNeeded=avgProfit>0?Math.max(0,Math.ceil(((settings.weeklyGoal||0)-totals.grossProfit)/avgProfit)):"—";
   const fixed=weeklyFixed(settings);
   const sources=useMemo(()=>{const m={};safeJobs.forEach(j=>{const s=j.source||"Other";m[s]=(m[s]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[safeJobs]);
   const maxSrc=sources.length?sources[0][1]:1;
@@ -974,7 +974,7 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
             <span class="currency">$</span>${Math.floor(totals.grossProfit).toLocaleString()}
           </div>
           <div style=${{fontSize:11,color:"var(--t3)",marginTop:8,fontWeight:500}}>
-            gross profit Â· ${weekJobs.length} job${weekJobs.length!==1?"s":""} Â· ${money(totals.revenue)} rev
+            gross profit · ${weekJobs.length} job${weekJobs.length!==1?"s":""} · ${money(totals.revenue)} rev
           </div>
         </div>
         <${ProgressRing} size=${88} stroke=${6} pct=${goalPct} color=${ringColor}>
@@ -992,25 +992,25 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
           <div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Fixed/Wk</div>
         </div>
         <div style=${{textAlign:"center"}}>
-          <div style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontSize:17,fontWeight:700,color:"var(--blue)",letterSpacing:"-1px"}}>${typeof jobsNeeded==="number"?jobsNeeded:"â"}</div>
+          <div style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontSize:17,fontWeight:700,color:"var(--blue)",letterSpacing:"-1px"}}>${typeof jobsNeeded==="number"?jobsNeeded:"—"}</div>
           <div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Jobs Left</div>
         </div>
       </div>
       ${goalPct>=100&&html`<div style=${{textAlign:"center",marginTop:12,animation:"scaleIn .4s ease"}}>
-        <span style=${{background:"var(--green-dim)",color:"var(--green)",padding:"6px 16px",borderRadius:999,fontSize:12,fontWeight:800,border:"1px solid rgba(34,197,94,.25)"}}>ð¯ Weekly Goal Achieved!</span>
+        <span style=${{background:"var(--green-dim)",color:"var(--green)",padding:"6px 16px",borderRadius:999,fontSize:12,fontWeight:800,border:"1px solid rgba(34,197,94,.25)"}}>🎯 Weekly Goal Achieved!</span>
       </div>`}
     </div>
 
     <div class="card-anim" style=${{marginBottom:16}}>
       <button class="cta-btn press-scale" onClick=${()=>setTab("add")}>
-        <span style=${{fontSize:18}}>ï¼</span><span>New Job</span>
+        <span style=${{fontSize:18}}>＋</span><span>New Job</span>
       </button>
     </div>
 
     <div class="card-anim">
       <div class="section-label" style=${{marginTop:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <span>Quick Quote</span>
-        ${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{if(onStartJob)onStartJob(qqForm);setQqForm({service:"Tire Repair",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});setQqMode("suggested");}}>Start Job â</button>`}
+        ${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{if(onStartJob)onStartJob(qqForm);setQqForm({service:"Tire Repair",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});setQqMode("suggested");}}>Start Job →</button>`}
       </div>
       <div style=${{marginBottom:4}}>
         <div style=${{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap",padding:"0 1px"}}>
@@ -1034,8 +1034,8 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
     </div>`}
 
     ${pendingJobs.length>0&&html`<div class="pending-banner card-anim press-scale" onClick=${()=>setTab("history")}>
-      <div><div class="pending-banner-title">â³ ${pendingJobs.length} Pending</div><div class="pending-banner-sub">${money(pendingTotal)} to collect</div></div>
-      <span style=${{fontSize:12,fontWeight:700,color:"var(--gold)"}}>Collect â</span>
+      <div><div class="pending-banner-title">⏳ ${pendingJobs.length} Pending</div><div class="pending-banner-sub">${money(pendingTotal)} to collect</div></div>
+      <span style=${{fontSize:12,fontWeight:700,color:"var(--gold)"}}>Collect →</span>
     </div>`}
 
     <div class="card card-anim">
@@ -1085,10 +1085,10 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
       const profit=jobGrossProfit(job,settings);
       const pg=profit>=70,po=profit>=40&&profit<70;
       return html`<div class="job-row card-anim press-scale" key=${job.id} style=${{cursor:"pointer",animationDelay:(0.05*idx)+"s"}} onClick=${()=>onRepeat(job)}>
-        <div class="job-icon">ð</div>
+        <div class="job-icon">🛞</div>
         <div class="job-main">
           <div class="job-title">${job.service}</div>
-          <div class="job-meta">${job.area} Â· ${job.date}${job.tireSize?" Â· "+job.tireSize:""}</div>
+          <div class="job-meta">${job.area} · ${job.date}${job.tireSize?" · "+job.tireSize:""}</div>
           <div style=${{marginTop:7,display:"flex",gap:6}}>
             <span class=${"pill "+(pg?"green":po?"orange":"red")}>${money(profit)}</span>
             ${job.status==="Pending"&&html`<span class="pill gold">Pending</span>`}
@@ -1099,11 +1099,11 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
           <div style=${{fontSize:10,color:"var(--t3)",marginTop:3}}>${job.payment}</div>
         </div>
       </div>`;
-    })}</div>`:html`<${EmptyState} icon="ð" title="No jobs yet" sub="Tap New Job above to get started." action=${html`<button class="btn primary press-scale" onClick=${()=>setTab("add")}>New Job</button>`}/>`}
+    })}</div>`:html`<${EmptyState} icon="🛞" title="No jobs yet" sub="Tap New Job above to get started." action=${html`<button class="btn primary press-scale" onClick=${()=>setTab("add")}>New Job</button>`}/>`}
   </div></div>`;
 }
 
-// ââ AddJob (BUG 1 FIXED: no more <> fragments) ââââââââââââââââââââââââââââââ
+// ── AddJob (BUG 1 FIXED: no more <> fragments) ──────────────────────────────
 function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit,saving}) {
   const [form,setForm]=useState(EMPTY_JOB());const [error,setError]=useState("");const [saved,setSaved]=useState(null);const [tick,setTick]=useState(0);const [editingId,setEditingId]=useState(null);const [priceMode,setPriceMode]=useState("suggested");
   const isEditing=!!editingId;
@@ -1128,19 +1128,19 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
   return html`<div class="screen" style=${{paddingBottom:0}}>
     <div class="page-enter" style=${{padding:"14px 14px 0"}}>
       ${isEditing&&html`<div style=${{background:"var(--gold-dim)",border:"1px solid rgba(192,149,74,.3)",borderRadius:12,padding:"12px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center",animation:"fadeSlideUp .3s ease"}}>
-        <span style=${{fontSize:13,fontWeight:700,color:"var(--gold)"}}>âï¸ Editing â ${form.date}</span>
+        <span style=${{fontSize:13,fontWeight:700,color:"var(--gold)"}}>✏️ Editing — ${form.date}</span>
         <button class="btn secondary sm press-scale" onClick=${cancelEdit}>Cancel</button>
       </div>`}
       <div style=${{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-        ${lastJob&&!isEditing&&html`<button type="button" class="btn secondary sm press-scale" onClick=${useLastJob}>â© Last Job</button>`}
-        ${!isEditing&&html`<button type="button" class="btn secondary sm press-scale" onClick=${()=>{setForm(EMPTY_JOB());setSaved(null);setError("");setPriceMode("suggested");}}>â Clear</button>`}
+        ${lastJob&&!isEditing&&html`<button type="button" class="btn secondary sm press-scale" onClick=${useLastJob}>↩ Last Job</button>`}
+        ${!isEditing&&html`<button type="button" class="btn secondary sm press-scale" onClick=${()=>{setForm(EMPTY_JOB());setSaved(null);setError("");setPriceMode("suggested");}}>✕ Clear</button>`}
       </div>
       ${error&&html`<div style=${{background:"var(--red-dim)",border:"1px solid rgba(239,68,68,.3)",borderRadius:12,padding:"12px 16px",fontSize:13,color:"var(--red)",marginBottom:14,fontWeight:600,animation:"fadeSlideUp .3s ease"}}>${error}</div>`}
       ${saved&&!isEditing&&html`<div class="success-strip">
-        <div class="success-strip-title">â ${money(saved.revenue)} Â· ${money(jobGrossProfit(saved,settings))} profit</div>
-        <button class="btn primary sm press-scale" onClick=${()=>sendInvoice(saved,settings)}>ð§¾ Invoice</button>
-        ${saved.status==="Completed"&&html`<button class="btn success sm press-scale" onClick=${requestReview}>â­ Review</button>`}
-        <button class="btn secondary sm press-scale" onClick=${()=>{setForm({...saved,id:"",revenue:String(saved.revenue)});setSaved(null);}}>ð Dup</button>
+        <div class="success-strip-title">✅ ${money(saved.revenue)} · ${money(jobGrossProfit(saved,settings))} profit</div>
+        <button class="btn primary sm press-scale" onClick=${()=>sendInvoice(saved,settings)}>🧾 Invoice</button>
+        ${saved.status==="Completed"&&html`<button class="btn success sm press-scale" onClick=${requestReview}>⭐ Review</button>`}
+        <button class="btn secondary sm press-scale" onClick=${()=>{setForm({...saved,id:"",revenue:String(saved.revenue)});setSaved(null);}}>🔁 Dup</button>
       </div>`}
       <${QuickQuote} form=${form} settings=${settings} onApply=${v=>setF("revenue",v)} onFormChange=${setF} priceMode=${priceMode} setPriceMode=${setPriceMode}/>
       <div class="form-group card-anim">
@@ -1150,7 +1150,7 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
           <div class="field"><label>Tire Cost ($)</label><input type="number" min="0" inputMode="decimal" value=${form.tireCost} onChange=${e=>setF("tireCost",e.target.value)} placeholder="0"/></div>
         </div>
         <div class="field-row">
-          <div class="field"><label>Misc Cost ($)</label><input type="number" min="0" inputMode="decimal" value=${form.miscCost} onChange=${e=>setF("miscCost",e.target.value)} placeholder="plugs, stemsâ¦"/></div>
+          <div class="field"><label>Misc Cost ($)</label><input type="number" min="0" inputMode="decimal" value=${form.miscCost} onChange=${e=>setF("miscCost",e.target.value)} placeholder="plugs, stems…"/></div>
           <div class="field"><label>Qty</label><input type="number" min="1" value=${form.qty} onChange=${e=>setF("qty",e.target.value)}/></div>
         </div>
         <div class="field"><label>Conditions</label><div class="chip-row">${FLAGS.map(([key,label,amt])=>html`<button type="button" key=${key} class=${"chip"+(form[key]?" active":"")} onClick=${()=>setF(key,!form[key])}>${label+(form[key]?" +$"+amt:"")}</button>`)}</div></div>
@@ -1173,22 +1173,22 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
       </div>
       <div class="form-group card-anim">
         <div class="form-group-title">Customer (optional)</div>
-        <div class="field-row"><div class="field"><label>Name</label><input value=${form.customerName} onChange=${e=>setF("customerName",e.target.value)} placeholder="Customer name"/></div><div class="field"><label>Phone</label><input type="tel" value=${form.customerPhone} onChange=${e=>setF("customerPhone",e.target.value)} placeholder="(305)â¦"/></div></div>
+        <div class="field-row"><div class="field"><label>Name</label><input value=${form.customerName} onChange=${e=>setF("customerName",e.target.value)} placeholder="Customer name"/></div><div class="field"><label>Phone</label><input type="tel" value=${form.customerPhone} onChange=${e=>setF("customerPhone",e.target.value)} placeholder="(305)…"/></div></div>
       </div>
       <div class="field"><label>Notes</label><textarea value=${form.note} onChange=${e=>setF("note",e.target.value)} placeholder="Parking garage, roadside, no spare, etc."/></div>
-      ${form.status==="Completed"&&html`<button class="btn blue press-scale" style=${{width:"100%",marginBottom:10}} onClick=${requestReview}>â­ Send Review${form.customerPhone?" via SMS":""}</button>`}
+      ${form.status==="Completed"&&html`<button class="btn blue press-scale" style=${{width:"100%",marginBottom:10}} onClick=${requestReview}>⭐ Send Review${form.customerPhone?" via SMS":""}</button>`}
       <div style=${{height:90}}/>
     </div>
 
     <div class="sticky-save">
       ${isEditing
-        ?[html`<button key="cancel" class="btn secondary press-scale" onClick=${cancelEdit}>Cancel</button>`,html`<button key="save" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Savingâ¦":"Update Job â"}</button>`]
-        :[html`<button key="addmore" class="btn secondary press-scale" onClick=${()=>doSave(true)} disabled=${saving}>Save + Add</button>`,html`<button key="save" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Savingâ¦":"Save Job â"}</button>`]}
+        ?[html`<button key="cancel" class="btn secondary press-scale" onClick=${cancelEdit}>Cancel</button>`,html`<button key="save" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Update Job ✓"}</button>`]
+        :[html`<button key="addmore" class="btn secondary press-scale" onClick=${()=>doSave(true)} disabled=${saving}>Save + Add</button>`,html`<button key="save" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Save Job →"}</button>`]}
     </div>
   </div>`;
 }
 
-// ââ History (BUG 3 FIXED: .page div structure) âââââââââââââââââââââââââââââââ
+// ── History (BUG 3 FIXED: .page div structure) ───────────────────────────────
 function History({jobs,settings,onRepeat,onDelete,onEdit}) {
   const safeJobs=Array.isArray(jobs)?jobs:[];
   const [filter,setFilter]=useState("All");const [search,setSearch]=useState("");const [view,setView]=useState("weeks");
@@ -1210,11 +1210,11 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
     const sendReview=()=>openReviewSMS(job.customerPhone,(settings.googleReviewUrl||"").trim(),job.customerName,job.service,job.area);
     return html`<div class="card-anim" style=${{background:"var(--s1)",borderRadius:"var(--r2)",overflow:"hidden",border:"1px solid var(--border)",boxShadow:"var(--sh-card)"}}>
       <div style=${{padding:"15px 17px",display:"flex",alignItems:"flex-start",gap:12}}>
-        <div class="job-icon">ð</div>
+        <div class="job-icon">🛞</div>
         <div style=${{flex:1,minWidth:0}}>
           <div class="job-title">${job.service}</div>
-          <div class="job-meta">${job.area} Â· ${job.date}${job.tireSize?" Â· "+job.tireSize:""}</div>
-          ${(job.customerName||job.customerPhone)&&html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>ð¤ ${job.customerName||""}${job.customerPhone?" Â· "+job.customerPhone:""}</div>`}
+          <div class="job-meta">${job.area} · ${job.date}${job.tireSize?" · "+job.tireSize:""}</div>
+          ${(job.customerName||job.customerPhone)&&html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>👤 ${job.customerName||""}${job.customerPhone?" · "+job.customerPhone:""}</div>`}
           <div style=${{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}><span class=${"pill "+profitCls}>${money(profit)}</span>${job.status==="Pending"&&html`<span class="pill gold">Pending</span>`}</div>
         </div>
         <div style=${{textAlign:"right",flexShrink:0}}>
@@ -1223,19 +1223,19 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
         </div>
       </div>
       <div style=${{padding:"10px 17px 12px",borderTop:"1px solid var(--border2)",display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-        ${onEdit&&html`<button class="btn secondary xs press-scale" onClick=${()=>onEdit(job)}>âï¸</button>`}
-        <button class="btn secondary xs press-scale" onClick=${()=>onRepeat(job)}>ð</button>
-        <button class="btn blue xs press-scale" onClick=${()=>sendInvoice(job,settings)}>ð§¾</button>
-        <button class="btn secondary xs press-scale" onClick=${sendReview}>â­</button>
-        ${job.status==="Pending"&&html`<button class="btn success xs press-scale" onClick=${()=>markPaid(job)}>â Paid</button>`}
-        <button class="btn danger xs press-scale" onClick=${()=>handleDelete(job.id)}>Ã</button>
+        ${onEdit&&html`<button class="btn secondary xs press-scale" onClick=${()=>onEdit(job)}>✏️</button>`}
+        <button class="btn secondary xs press-scale" onClick=${()=>onRepeat(job)}>🔁</button>
+        <button class="btn blue xs press-scale" onClick=${()=>sendInvoice(job,settings)}>🧾</button>
+        <button class="btn secondary xs press-scale" onClick=${sendReview}>⭐</button>
+        ${job.status==="Pending"&&html`<button class="btn success xs press-scale" onClick=${()=>markPaid(job)}>✓ Paid</button>`}
+        <button class="btn danger xs press-scale" onClick=${()=>handleDelete(job.id)}>×</button>
       </div>
     </div>`;
   };
   // BUG 3 FIX: .page div now correctly wraps ALL content
   return html`<div class="screen"><div class="page page-enter">
     <div style=${{marginBottom:12}}>
-      <input value=${search} onChange=${e=>setSearch(e.target.value)} placeholder="Search jobs, tires, customersâ¦" style=${{width:"100%",background:"var(--s2)",border:"1px solid var(--border)",borderRadius:14,padding:"14px 18px",outline:"none",fontSize:15,color:"var(--t1)"}}/>
+      <input value=${search} onChange=${e=>setSearch(e.target.value)} placeholder="Search jobs, tires, customers…" style=${{width:"100%",background:"var(--s2)",border:"1px solid var(--border)",borderRadius:14,padding:"14px 18px",outline:"none",fontSize:15,color:"var(--t1)"}}/>
     </div>
     <div class="chip-row" style=${{marginBottom:10}}>
       ${["All","Repair","Replacement","Pending"].concat(cities).slice(0,9).map(c=>html`<button key=${c} class=${"chip"+(filter===c?" active":"")} onClick=${()=>setFilter(c)}>${c}</button>`)}
@@ -1245,16 +1245,16 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
       <button class=${"chip sm"+(view==="list"?" active":"")} onClick=${()=>setView("list")}>All Jobs</button>
       <span style=${{marginLeft:"auto",fontFamily:"\"IBM Plex Mono\",monospace",fontSize:12,color:"#999",alignSelf:"center"}}>${filtered.length} jobs</span>
     </div>
-    ${filtered.length===0?html`<${EmptyState} icon="ð" title="No jobs found" sub=${search?"Try different search.":"No jobs match."}/>`:view==="weeks"?html`<div>
+    ${filtered.length===0?html`<${EmptyState} icon="📋" title="No jobs found" sub=${search?"Try different search.":"No jobs match."}/>`:view==="weeks"?html`<div>
       ${weekGroups.map(([wk,wkJobs])=>{const t=weekSummary(wkJobs,settings);return html`<div key=${wk} style=${{marginBottom:20}}>
-        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0"}}><div><div style=${{fontWeight:700,fontSize:13}}>${weekLabel(wk)}</div><div class="sub">${wkJobs.length} jobs Â· ${money(t.revenue)} rev</div></div><div class=${"value "+(t.net>=0?"green":"red")}>${money(t.net)}</div></div>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0"}}><div><div style=${{fontWeight:700,fontSize:13}}>${weekLabel(wk)}</div><div class="sub">${wkJobs.length} jobs · ${money(t.revenue)} rev</div></div><div class=${"value "+(t.net>=0?"green":"red")}>${money(t.net)}</div></div>
         <div class="stack">${wkJobs.map(job=>html`<${JobRow} key=${job.id} job=${job}/>`)}</div>
       </div>`;})}
     </div>`:html`<div class="stack">${filtered.map(job=>html`<${JobRow} key=${job.id} job=${job}/>`)}</div>`}
   </div></div>`;
 }
 
-// ââ Expenses ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Expenses ──────────────────────────────────────────────────────────────────
 function Expenses({expenses,setExpenses}) {
   const safe=Array.isArray(expenses)?expenses:[];
   const [form,setForm]=useState({date:TODAY(),category:"Fuel",amount:"",note:""});
@@ -1271,7 +1271,7 @@ function Expenses({expenses,setExpenses}) {
       <div class="mini-box"><strong>${money(weekTotal)}</strong><span>This Week</span></div>
       <div class="mini-box"><strong>${money(total)}</strong><span>All Time</span></div>
       <div class="mini-box"><strong>${safe.length}</strong><span>Receipts</span></div>
-      <div class="mini-box"><strong>${safe.length?money(total/safe.length):"â"}</strong><span>Avg</span></div>
+      <div class="mini-box"><strong>${safe.length?money(total/safe.length):"—"}</strong><span>Avg</span></div>
     </div>
     <div class="card card-anim" style=${{marginBottom:14}}><div class="card-pad">
       <div class="field-row"><div class="field" style=${{marginBottom:8}}><label>Date</label><input type="date" value=${form.date} onChange=${e=>setF("date",e.target.value)}/></div><div class="field" style=${{marginBottom:8}}><label>Amount ($)</label><input type="number" min="0" inputMode="decimal" value=${form.amount} onChange=${e=>setF("amount",e.target.value)} placeholder="0.00" style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontWeight:700}}/></div></div>
@@ -1279,15 +1279,15 @@ function Expenses({expenses,setExpenses}) {
       <div class="field" style=${{marginBottom:10}}><label>Note</label><input value=${form.note} onChange=${e=>setF("note",e.target.value)} placeholder="BP station, etc."/></div>
       <button class="btn primary press-scale" style=${{width:"100%"}} onClick=${add}>+ Log Expense</button>
     </div></div>
-    ${safe.length===0?html`<${EmptyState} icon="ð§¾" title="No expenses logged" sub="Track fuel, supplies, repairs."/>`:html`<div class="stack">${[...safe].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(exp=>html`<div class="job-row card-anim" key=${exp.id}><div class="job-icon" style=${{fontSize:16}}>ð§¾</div><div class="job-main"><div class="job-title">${exp.category}</div><div class="job-meta">${exp.date}${exp.note?" Â· "+exp.note:""}</div></div><div class="job-right"><div class="value red">${money(exp.amount)}</div><button class="btn danger sm press-scale" style=${{marginTop:8}} onClick=${()=>remove(exp.id)}>Ã</button></div></div>`)}</div>`}
+    ${safe.length===0?html`<${EmptyState} icon="🧾" title="No expenses logged" sub="Track fuel, supplies, repairs."/>`:html`<div class="stack">${[...safe].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(exp=>html`<div class="job-row card-anim" key=${exp.id}><div class="job-icon" style=${{fontSize:16}}>🧾</div><div class="job-main"><div class="job-title">${exp.category}</div><div class="job-meta">${exp.date}${exp.note?" · "+exp.note:""}</div></div><div class="job-right"><div class="value red">${money(exp.amount)}</div><button class="btn danger sm press-scale" style=${{marginTop:8}} onClick=${()=>remove(exp.id)}>×</button></div></div>`)}</div>`}
   </div></div>`;
 }
 
-// ââ Payouts âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Payouts ───────────────────────────────────────────────────────────────────
 function Payouts({jobs,settings}) {
   const safeJobs=Array.isArray(jobs)?jobs:[];
   const weeks=useMemo(()=>groupByWeek(safeJobs),[safeJobs]);
-  if(!weeks.length)return html`<div class="screen"><div class="page page-enter"><${EmptyState} icon="ð°" title="No payout history" sub="Log jobs to see weekly payout breakdowns."/></div></div>`;
+  if(!weeks.length)return html`<div class="screen"><div class="page page-enter"><${EmptyState} icon="💰" title="No payout history" sub="Log jobs to see weekly payout breakdowns."/></div></div>`;
   return html`<div class="screen"><div class="page page-enter">
     <div class="section-label" style=${{marginTop:0}}>Weekly Payouts</div>
     ${weeks.map(([wk,wkJobs])=>{
@@ -1303,14 +1303,14 @@ function Payouts({jobs,settings}) {
         <div class="card-row"><div class="label">Direct Costs</div><div class="value red">${money(t.directCosts)}</div></div>
         <div class="card-row"><div class="label">Gross Profit</div><div class="value">${money(t.grossProfit)}</div></div>
         <div class="card-row"><div class="label">Weekly Fixed</div><div class="value red">${money(t.fixed)}</div></div>
-        ${[{name:settings.owner1Name||"Owner 1",pct:settings.profitSplit1,amt:o1,active:ao1},{name:settings.owner2Name||"Owner 2",pct:settings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>html`<div key=${i} class="card-row" style=${{background:"var(--s2)",opacity:o.active?1:0.4}}><div><div class="label">${o.name}</div><div class="sub">${o.pct}% split</div></div><div class=${"value "+(o.active&&o.amt>0?"green":"")}>${o.active?money(o.amt):"â"}</div></div>`)}
-        ${tax>0&&html`<div class="card-pad"><div class="tax-box" style=${{marginTop:0}}><div class="tax-lbl">ð° Tax Reserve (${settings.taxRate}%)</div><div class="tax-amt">${money(tax)}</div><div class="tax-hint">~${money(tax/2)} per owner</div></div></div>`}
+        ${[{name:settings.owner1Name||"Owner 1",pct:settings.profitSplit1,amt:o1,active:ao1},{name:settings.owner2Name||"Owner 2",pct:settings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>html`<div key=${i} class="card-row" style=${{background:"var(--s2)",opacity:o.active?1:0.4}}><div><div class="label">${o.name}</div><div class="sub">${o.pct}% split</div></div><div class=${"value "+(o.active&&o.amt>0?"green":"")}>${o.active?money(o.amt):"—"}</div></div>`)}
+        ${tax>0&&html`<div class="card-pad"><div class="tax-box" style=${{marginTop:0}}><div class="tax-lbl">💰 Tax Reserve (${settings.taxRate}%)</div><div class="tax-amt">${money(tax)}</div><div class="tax-hint">~${money(tax/2)} per owner</div></div></div>`}
       </div>`;
     })}
   </div></div>`;
 }
 
-// ââ Inventory (minimal â keeping existing logic, adding animations) âââââââââââ
+// ── Inventory (minimal — keeping existing logic, adding animations) ───────────
 function Inventory({inventory,setInventory,jobs}) {
   const inv=Array.isArray(inventory)?inventory:[];const jobsArr=Array.isArray(jobs)?jobs:[];
   const [search,setSearch]=useState('');const [editId,setEditId]=useState(null);
@@ -1338,19 +1338,19 @@ function Inventory({inventory,setInventory,jobs}) {
       <div class="kpi"><div class="kpi-label">Attention</div><div class="kpi-value" style=${{fontSize:20,color:outOfStock.length>0?"var(--amber)":"var(--t3)"}}>${outOfStock.length+lowStock.length}</div><div class="kpi-sub">need reorder</div></div>
     </div>
     <div style=${{display:"flex",gap:8,marginBottom:12}}>
-      <input value=${search} onChange=${e=>setSearch(e.target.value)} placeholder="Search by tire sizeâ¦" style=${{flex:1,background:"var(--s2)",border:"1px solid var(--border)",borderRadius:12,padding:"13px 16px",fontSize:15,outline:"none",color:"var(--t1)"}}/>
+      <input value=${search} onChange=${e=>setSearch(e.target.value)} placeholder="Search by tire size…" style=${{flex:1,background:"var(--s2)",border:"1px solid var(--border)",borderRadius:12,padding:"13px 16px",fontSize:15,outline:"none",color:"var(--t1)"}}/>
       <button class="btn primary press-scale" style=${{flexShrink:0,padding:"13px 20px",fontSize:14,borderRadius:12}} onClick=${add}>+ Add</button>
     </div>
-    ${sorted.length===0?html`<${EmptyState} icon="ð" title="No inventory" sub="Tap + Add to add a tire size."/>`:html`<div class="card card-anim">
+    ${sorted.length===0?html`<${EmptyState} icon="🛞" title="No inventory" sub="Tap + Add to add a tire size."/>`:html`<div class="card card-anim">
       ${sorted.map((item,idx)=>{const isEditing=editId===item.id;const qty=Number(item.qty||0);const isLow=qty>0&&qty<=LOW_STOCK,isOut=qty===0;const isPending=!(item.size||'').trim();
         return html`<div key=${item.id} style=${{borderBottom:idx<sorted.length-1?"1px solid var(--border2)":"none"}}>
           <div style=${{display:"flex",alignItems:"center",padding:"14px 18px",gap:12,cursor:"pointer"}} onClick=${()=>setEditId(isEditing?null:item.id)}>
-            <div style=${{flex:1,minWidth:0}}><div style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontWeight:700,fontSize:15,color:isPending?"var(--gold)":"var(--t1)",letterSpacing:"-.3px"}}>${isPending?html`<span style=${{fontSize:13,fontWeight:600}}>Enter size â</span>`:item.size}</div>${item.cost>0&&html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:2}}>Cost ${money(item.cost)}</div>`}</div>
+            <div style=${{flex:1,minWidth:0}}><div style=${{fontFamily:"\"IBM Plex Mono\",monospace",fontWeight:700,fontSize:15,color:isPending?"var(--gold)":"var(--t1)",letterSpacing:"-.3px"}}>${isPending?html`<span style=${{fontSize:13,fontWeight:600}}>Enter size →</span>`:item.size}</div>${item.cost>0&&html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:2}}>Cost ${money(item.cost)}</div>`}</div>
             ${bestSellers.includes(item.size||'')&&!isPending&&html`<span style=${{fontSize:9,fontWeight:800,background:"var(--gold-dim)",color:"var(--gold)",borderRadius:999,padding:"3px 10px"}}>BEST</span>`}
             ${isOut&&!isPending&&html`<span style=${{fontSize:9,fontWeight:800,color:"var(--t3)",background:"var(--s3)",borderRadius:999,padding:"3px 10px"}}>OUT</span>`}
             ${isLow&&!isOut&&html`<span style=${{fontSize:9,fontWeight:800,color:"var(--amber)",background:"var(--amber-dim)",borderRadius:999,padding:"3px 10px"}}>LOW</span>`}
             <div style=${{display:"flex",alignItems:"center",gap:0,background:"var(--s3)",borderRadius:10,overflow:"hidden",flexShrink:0}} onClick=${e=>e.stopPropagation()}>
-              <button onClick=${()=>step(item.id,-1)} style=${{background:"none",border:"none",width:36,height:36,fontSize:18,fontWeight:700,color:"var(--t2)",lineHeight:1}}>â</button>
+              <button onClick=${()=>step(item.id,-1)} style=${{background:"none",border:"none",width:36,height:36,fontSize:18,fontWeight:700,color:"var(--t2)",lineHeight:1}}>−</button>
               <div style=${{width:32,textAlign:"center",fontFamily:"\"IBM Plex Mono\",monospace",fontWeight:700,fontSize:15,color:isOut?"var(--t3)":isLow?"var(--amber)":"var(--t1)"}}>${qty}</div>
               <button onClick=${()=>step(item.id,1)} style=${{background:"none",border:"none",width:36,height:36,fontSize:18,fontWeight:700,color:"var(--t2)",lineHeight:1}}>+</button>
             </div>
@@ -1358,14 +1358,14 @@ function Inventory({inventory,setInventory,jobs}) {
           ${isEditing&&html`<div style=${{padding:"0 18px 16px",display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:10,alignItems:"end",background:"var(--s2)",borderTop:"1px solid var(--border2)",animation:"fadeSlideUp .2s ease"}}>
             <div><div style=${{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"var(--t3)",marginBottom:6}}>Size</div><input autoFocus=${isPending} value=${item.size} onChange=${e=>update(item.id,{size:e.target.value})} placeholder="225/55R17" style=${{border:"1px solid var(--border)",borderRadius:10,padding:"11px 13px",fontSize:15,fontFamily:"\"IBM Plex Mono\",monospace",fontWeight:700,outline:"none",width:"100%",background:"var(--s1)",color:"var(--t1)"}}/></div>
             <div><div style=${{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"var(--t3)",marginBottom:6}}>Cost ($)</div><input value=${item.cost||""} type="number" min="0" onChange=${e=>update(item.id,{cost:Number(e.target.value||0)})} placeholder="0" style=${{border:"1px solid var(--border)",borderRadius:10,padding:"11px 13px",fontSize:14,outline:"none",width:"100%",background:"var(--s1)",color:"var(--t1)"}}/></div>
-            <button class="btn danger sm" style=${{alignSelf:"end",height:44}} onClick=${()=>remove(item.id)}>Ã</button>
+            <button class="btn danger sm" style=${{alignSelf:"end",height:44}} onClick=${()=>remove(item.id)}>×</button>
           </div>`}
         </div>`;})}
     </div>`}
   </div></div>`;
 }
 
-// ââ Settings (compact) ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Settings (compact) ────────────────────────────────────────────────────────
 function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expenses,onResetInventory}) {
   const upd=(k,v)=>setSettings(p=>({...p,[k]:v}));
   const updExp=(id,patch)=>setSettings(p=>({...p,expenses:(Array.isArray(p.expenses)?p.expenses:[]).map(e=>e.id===id?{...e,...patch}:e)}));
@@ -1374,7 +1374,7 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
   const exportCSV=()=>{const headers=["Date","Service","Area","Source","Revenue","Tire Cost","Misc Cost","Miles","Direct Cost","Gross Profit","Payment","Tire Size","Qty","Customer","Phone","Notes"];const rows=[...(jobs||[])].sort((a,b)=>a.date.localeCompare(b.date)).map(j=>{const dc=jobDirectCost(j,settings),gp=jobGrossProfit(j,settings);return[j.date,j.service,j.area,j.source||"",Number(j.revenue||0).toFixed(2),Number(j.tireCost||0).toFixed(2),Number(j.miscCost||0).toFixed(2),Number(j.miles||0).toFixed(1),dc.toFixed(2),gp.toFixed(2),j.payment,j.tireSize||"",j.qty||1,j.customerName||"",j.customerPhone||"",(j.note||"").replace(/,/g," ")].map(v=>'"'+v+'"').join(",");});const csv=[headers.join(",")].concat(rows).join("\n");const blob=new Blob([csv],{type:"text/csv"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="wheel-rush-"+TODAY()+".csv";a.click();URL.revokeObjectURL(url);};
   const exportData=()=>{const d={jobs,settings,inventory,expenses,exportedAt:new Date().toISOString(),version:"6"};const blob=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="wheel-rush-backup-"+TODAY()+".json";a.click();URL.revokeObjectURL(url);};
   const importData=()=>{const inp=document.createElement("input");inp.type="file";inp.accept=".json";inp.onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(Array.isArray(data.jobs))setJobs(data.jobs);if(data.settings&&typeof data.settings==="object")setSettings({...DEFAULT_SETTINGS,...data.settings});alert("Import complete.");}catch{alert("Could not import.");}};inp.click();};
-  const resetInventory=()=>{if(!window.confirm("Reset inventory to 52-size list?"))return;const fresh=DEFAULT_INVENTORY.map(i=>({...i}));setInventory(fresh);persist(KEYS.inventory,fresh);if(onResetInventory)onResetInventory(fresh);alert("â Done!");};
+  const resetInventory=()=>{if(!window.confirm("Reset inventory to 52-size list?"))return;const fresh=DEFAULT_INVENTORY.map(i=>({...i}));setInventory(fresh);persist(KEYS.inventory,fresh);if(onResetInventory)onResetInventory(fresh);alert("✅ Done!");};
   const clearAll=()=>{if(!window.confirm("Clear ALL data? Cannot be undone."))return;Object.values(KEYS).forEach(k=>localStorage.removeItem(k));window.location.reload();};
   const monthly=monthlyFixed(settings),weekly=weeklyFixed(settings);
   return html`<div class="screen"><div class="page page-enter">
@@ -1391,10 +1391,10 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
       <div class="settings-row"><div class="label">Cost Per Mile $</div><input type="number" step="0.01" class="settings-inp" style=${{width:90}} value=${settings.costPerMile||""} onChange=${e=>upd("costPerMile",Number(e.target.value||0))}/></div>
     </div>
     <div class="section-label">Google Review Link</div>
-    <div class="card card-anim"><div class="card-pad"><input class="settings-inp" style=${{width:"100%"}} value=${settings.googleReviewUrl||""} onChange=${e=>upd("googleReviewUrl",e.target.value)} placeholder="https://g.page/r/â¦/review"/></div></div>
+    <div class="card card-anim"><div class="card-pad"><input class="settings-inp" style=${{width:"100%"}} value=${settings.googleReviewUrl||""} onChange=${e=>upd("googleReviewUrl",e.target.value)} placeholder="https://g.page/r/…/review"/></div></div>
     <div class="section-label">Monthly Fixed Expenses</div>
     <div class="card card-anim">
-      ${(Array.isArray(settings.expenses)?settings.expenses:[]).map(exp=>html`<div class="expense-row" key=${exp.id}><input value=${exp.name} onChange=${e=>updExp(exp.id,{name:e.target.value})}/><input type="number" value=${exp.amount} onChange=${e=>updExp(exp.id,{amount:Number(e.target.value||0)})}/><button class=${"btn sm "+(exp.active?"success":"secondary")} onClick=${()=>updExp(exp.id,{active:!exp.active})}>${exp.active?"On":"Off"}</button><button class="btn danger sm" onClick=${()=>delExp(exp.id)}>Ã</button></div>`)}
+      ${(Array.isArray(settings.expenses)?settings.expenses:[]).map(exp=>html`<div class="expense-row" key=${exp.id}><input value=${exp.name} onChange=${e=>updExp(exp.id,{name:e.target.value})}/><input type="number" value=${exp.amount} onChange=${e=>updExp(exp.id,{amount:Number(e.target.value||0)})}/><button class=${"btn sm "+(exp.active?"success":"secondary")} onClick=${()=>updExp(exp.id,{active:!exp.active})}>${exp.active?"On":"Off"}</button><button class="btn danger sm" onClick=${()=>delExp(exp.id)}>×</button></div>`)}
       <div class="card-row"><button class="btn secondary sm press-scale" onClick=${addExp}>+ Add</button><div style=${{textAlign:"right"}}><div class="value">${money(monthly)}/mo</div><div class="sub">${money(weekly)}/wk</div></div></div>
     </div>
     <div class="section-label">Data</div>
@@ -1405,46 +1405,46 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
       <div class="card-row"><div class="label">Reset Inventory</div><button class="btn orange sm press-scale" onClick=${resetInventory}>Reset</button></div>
       <div class="card-row"><div class="label" style=${{color:"var(--red)"}}>Reset Everything</div><button class="btn danger sm" onClick=${clearAll}>Reset</button></div>
     </div>
-    <div style=${{padding:"8px 0 4px",textAlign:"center",fontSize:11,color:"var(--t3)"}}>Wheel Rush Pro v10 Â· Firebase Sync</div>
+    <div style=${{padding:"8px 0 4px",textAlign:"center",fontSize:11,color:"var(--t3)"}}>Wheel Rush Pro v10 · Firebase Sync</div>
   </div></div>`;
 }
 
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// âââ ROOT APP COMPONENT âââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ══════════════════════════════════════════════════════════════════════════════
+// ═══ ROOT APP COMPONENT ═════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
 function App() {
-  // ââ Auth state âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Auth state ───────────────────────────────────────────────────────────
   const [user,setUser]=useState(null);
   const [authReady,setAuthReady]=useState(false);
   const [syncStatus,setSyncStatus]=useState("local");
 
-  // ââ Core data state ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Core data state ──────────────────────────────────────────────────────
   const [jobs,setJobs]=useState(()=>load(KEYS.jobs,[]));
   const [settings,setSettings]=useState(()=>{const loaded={...DEFAULT_SETTINGS,...load(KEYS.settings,{})};if(typeof loaded.expenses==="string"){try{loaded.expenses=JSON.parse(loaded.expenses);}catch(e){loaded.expenses=[];}}if(!Array.isArray(loaded.expenses))loaded.expenses=[];return loaded;});
   const [inventory,setInventory]=useState(()=>load(KEYS.inventory,DEFAULT_INVENTORY.map(i=>({...i}))));
   const [expenses,setExpenses]=useState(()=>load(KEYS.expenses,[]));
 
-  // ââ UI state âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── UI state ─────────────────────────────────────────────────────────────
   const [tab,setTab]=useState("dashboard");
   const [saving,setSaving]=useState(false);
   const [prefill,setPrefill]=useState(null);
   const [editJob,setEditJob]=useState(null);
 
-  // ââ Refs for Firebase listeners ââââââââââââââââââââââââââââââââââââââââââ
+  // ── Refs for Firebase listeners ──────────────────────────────────────────
   const unsubJobs=useRef(null);
   const unsubInv=useRef(null);
   const unsubExp=useRef(null);
   const unsubSettings=useRef(null);
   const pendingRef=useRef([]);
 
-  // ââ Auth listener ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Auth listener ────────────────────────────────────────────────────────
   useEffect(()=>{
     if(!_auth)return setAuthReady(true);
     const unsub=_auth.onAuthStateChanged(u=>{setUser(u||null);setAuthReady(true);});
     return ()=>unsub();
   },[]);
 
-  // ââ Firebase listeners (when user is logged in) ââââââââââââââââââââââââââ
+  // ── Firebase listeners (when user is logged in) ──────────────────────────
   useEffect(()=>{
     if(!user){
       setSyncStatus("local");
@@ -1489,7 +1489,7 @@ function App() {
     };
   },[user]);
 
-  // ââ Persist settings on change âââââââââââââââââââââââââââââââââââââââââââ
+  // ── Persist settings on change ───────────────────────────────────────────
   useEffect(()=>{
     persist(KEYS.settings,settings);
     if(user&&settingDoc()){
@@ -1501,11 +1501,11 @@ function App() {
     }
   },[settings,user]);
 
-  // ââ Persist jobs locally (offline fallback) ââââââââââââââââââââââââââââââ
+  // ── Persist jobs locally (offline fallback) ──────────────────────────────
   useEffect(()=>{persist(KEYS.jobs,jobs);},[jobs]);
   useEffect(()=>{persist(KEYS.inventory,inventory);},[inventory]);
 
-  // ââ Save job handler âââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Save job handler ─────────────────────────────────────────────────────
   const saveJob=useCallback(async(job,addAnother)=>{
     setSaving(true);
     try{
@@ -1550,7 +1550,7 @@ function App() {
     finally{setSaving(false);}
   },[user]);
 
-  // ââ Expense wrapper (BUG 3+5+6 FIX) âââââââââââââââââââââââââââââââââââââ
+  // ── Expense wrapper (BUG 3+5+6 FIX) ─────────────────────────────────────
   const handleSetExpenses=useCallback(updater=>{
     setExpenses(prev=>{
       const next=typeof updater==="function"?updater(prev):updater;
@@ -1570,7 +1570,7 @@ function App() {
     });
   },[user]);
 
-  // ââ Inventory save handler âââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Inventory save handler ───────────────────────────────────────────────
   const handleSetInventory=useCallback(updater=>{
     setInventory(prev=>{
       const next=typeof updater==="function"?updater(prev):updater;
@@ -1580,27 +1580,27 @@ function App() {
     });
   },[user]);
 
-  // ââ Reset inventory (for Settings) âââââââââââââââââââââââââââââââââââââââ
+  // ── Reset inventory (for Settings) ───────────────────────────────────────
   const resetInventoryFb=useCallback(fresh=>{
     pendingRef.current=[];
     if(user&&invCol()){fresh.forEach(x=>fbSet(invCol(),x.id,{id:x.id,size:x.size||"",qty:Number(x.qty||0),cost:Number(x.cost||0),notes:x.notes||""}));}
   },[user]);
 
-  // ââ Repeat / edit job helper âââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Repeat / edit job helper ─────────────────────────────────────────────
   const handleRepeat=useCallback(job=>{setPrefill(job);setTab("add");},[]);
   const handleEdit=useCallback(job=>{setEditJob(job);setTab("add");},[]);
   const handleStartJob=useCallback(qqForm=>{setPrefill({...EMPTY_JOB(),...qqForm});setTab("add");},[]);
 
-  // ââ Sign out âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Sign out ─────────────────────────────────────────────────────────────
   const signOut=useCallback(()=>{if(_auth)_auth.signOut().then(()=>{setUser(null);setSyncStatus("local");}).catch(()=>{});},[]);
 
-  // ââ Delete job âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Delete job ───────────────────────────────────────────────────────────
   const deleteJob=useCallback(id=>{
     setJobs(prev=>{const next=prev.filter(j=>j.id!==id);persist(KEYS.jobs,next);return next;});
     if(user)fbDel(jobCol(),id);
   },[user]);
 
-  // ââ Mark job status ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Mark job status ──────────────────────────────────────────────────────
   const markJob=useCallback((id,status)=>{
     setJobs(prev=>{
       const next=prev.map(j=>j.id===id?{...j,status}:j);
@@ -1611,23 +1611,23 @@ function App() {
     });
   },[user]);
 
-  // ââ Loading state ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Loading state ────────────────────────────────────────────────────────
   if(!authReady)return html`<div style=${{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}>
     <div class="shimmer-text" style=${{fontSize:24,fontWeight:700}}>Wheel Rush</div>
   </div>`;
 
-  // ââ Auth screen ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Auth screen ──────────────────────────────────────────────────────────
   if(!user)return html`<${AuthScreen} onAuth=${u=>setUser(u)}/>`;
 
-  // ââ Tab routing ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Tab routing ──────────────────────────────────────────────────────────
   const TABS=[
-    {id:"dashboard",icon:"â¡",label:"Home"},
-    {id:"add",icon:"ï¼",label:"Add"},
-    {id:"history",icon:"ð",label:"Jobs"},
-    {id:"payouts",icon:"ð°",label:"Pay"},
-    {id:"expenses",icon:"ð",label:"Costs"},
-    {id:"inventory",icon:"ð",label:"Stock"},
-    {id:"settings",icon:"âï¸",label:"Setup"},
+    {id:"dashboard",icon:"⚡",label:"Home"},
+    {id:"add",icon:"＋",label:"Add"},
+    {id:"history",icon:"📋",label:"Jobs"},
+    {id:"payouts",icon:"💰",label:"Pay"},
+    {id:"expenses",icon:"📊",label:"Costs"},
+    {id:"inventory",icon:"🛞",label:"Stock"},
+    {id:"settings",icon:"⚙️",label:"Setup"},
   ];
 
   let content=null;
@@ -1667,7 +1667,7 @@ function App() {
   </div>`;
 }
 
-// ââ Mount ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Mount ────────────────────────────────────────────────────────────────────
 ReactDOM.render(html`<${App}/>`, document.getElementById("root"));
 </script>
 </body>
