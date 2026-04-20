@@ -430,7 +430,9 @@ const uid      = () => Date.now().toString(36) + Math.random().toString(36).slic
 const r2       = n  => Math.round((Number(n||0) + Number.EPSILON) * 100) / 100;
 const money    = n  => new Intl.NumberFormat("en-US", {style:"currency", currency:"USD"}).format(Number(n||0));
 const clamp    = (n,lo,hi) => Math.min(hi, Math.max(lo, n));
-const SERVICE_OPTIONS = ["Tire Repair","Tire Replacement","Tire Installation","Lug Nut Removal","Valve Stem Service","Roadside Assistance","Other"];
+const SERVICE_KEYS = ["Flat Tire Repair","Tire Replacement","Mobile Tire Service","Roadside Assistance","Tractor-Trailer Service","Spare Tire Change","Tire Rotation","Jump Start","Fuel Delivery","Lockout Service","Other"];
+const VEHICLE_TYPES = ["Car","SUV / Truck","Semi-Truck","Tractor-Trailer"];
+const SERVICE_OPTIONS = SERVICE_KEYS.slice();
 const PAYMENT_OPTIONS = [{label:"Cash",icon:"💵"},{label:"Zelle",icon:"🟣"},{label:"Card",icon:"💳"},{label:"Cash App",icon:"🟢"},{label:"Venmo",icon:"💙"},{label:"Check",icon:"✍️"}];
 const SOURCE_QUICK    = [{label:"Google",icon:"🔍"},{label:"Google Maps",icon:"🗺"},{label:"TikTok",icon:"🎵"},{label:"ChatGPT",icon:"🤖"},{label:"Referral",icon:"🤝"},{label:"Returning Customer",icon:"🔁"},{label:"Roadside Flag",icon:"🚗"}];
 const FLAGS           = [["emergency","🚨 Emergency",20],["lateNight","🌙 Late Night",20],["highway","🛣 Highway",15],["weekend","📅 Weekend",10]];
@@ -440,12 +442,32 @@ const LOW_STOCK       = 2;
 const DEFAULT_INVENTORY = [
   {id:"inv001",size:"195/55R15",qty:1,cost:0,notes:""},{id:"inv002",size:"185/55R16",qty:1,cost:0,notes:""},{id:"inv003",size:"195/60R16",qty:3,cost:0,notes:""},{id:"inv004",size:"205/55R16",qty:1,cost:0,notes:""},{id:"inv005",size:"205/60R16",qty:1,cost:0,notes:""},{id:"inv006",size:"215/55R16",qty:4,cost:0,notes:""},{id:"inv007",size:"215/65R16",qty:1,cost:0,notes:""},{id:"inv008",size:"225/50R16",qty:1,cost:0,notes:""},{id:"inv009",size:"235/65R16",qty:1,cost:0,notes:""},{id:"inv010",size:"205/40R17",qty:1,cost:0,notes:""},{id:"inv011",size:"215/45R17",qty:1,cost:0,notes:""},{id:"inv012",size:"225/60R17",qty:1,cost:0,notes:""},{id:"inv013",size:"225/65R17",qty:5,cost:0,notes:""},{id:"inv014",size:"235/55R17",qty:1,cost:0,notes:""},{id:"inv015",size:"245/55R17",qty:1,cost:0,notes:""},{id:"inv016",size:"245/65R17",qty:1,cost:0,notes:""},{id:"inv017",size:"255/50R17",qty:3,cost:0,notes:""},{id:"inv018",size:"255/65R17",qty:1,cost:0,notes:""},{id:"inv019",size:"265/70R17",qty:1,cost:0,notes:""},{id:"inv020",size:"215/40R18",qty:1,cost:0,notes:""},{id:"inv021",size:"225/50R18",qty:2,cost:0,notes:""},{id:"inv022",size:"225/55R18",qty:3,cost:0,notes:""},{id:"inv023",size:"225/60R18",qty:5,cost:0,notes:""},{id:"inv024",size:"245/40R18",qty:6,cost:0,notes:""},{id:"inv025",size:"255/55R18",qty:1,cost:0,notes:""},{id:"inv026",size:"255/60R18",qty:1,cost:0,notes:""},{id:"inv027",size:"225/35R19",qty:1,cost:0,notes:""},{id:"inv028",size:"225/40R19",qty:1,cost:0,notes:""},{id:"inv029",size:"235/40R19",qty:3,cost:0,notes:""},{id:"inv030",size:"235/45R19",qty:1,cost:0,notes:""},{id:"inv031",size:"235/50R19",qty:1,cost:0,notes:""},{id:"inv032",size:"235/55R19",qty:1,cost:0,notes:""},{id:"inv033",size:"285/40R19",qty:2,cost:0,notes:""},{id:"inv034",size:"235/50R20",qty:1,cost:0,notes:""},{id:"inv035",size:"245/35R20",qty:1,cost:0,notes:""},{id:"inv036",size:"245/50R20",qty:3,cost:0,notes:""},{id:"inv037",size:"255/50R20",qty:1,cost:0,notes:""},{id:"inv038",size:"275/45R20",qty:1,cost:0,notes:""},{id:"inv039",size:"285/45R20",qty:1,cost:0,notes:""},{id:"inv040",size:"295/30R20",qty:1,cost:0,notes:""},{id:"inv041",size:"315/55R20",qty:1,cost:0,notes:""},{id:"inv042",size:"255/35R21",qty:2,cost:0,notes:""},{id:"inv043",size:"255/40R21",qty:2,cost:0,notes:""},{id:"inv044",size:"275/35R21",qty:3,cost:0,notes:""},{id:"inv045",size:"295/35R21",qty:1,cost:0,notes:""},{id:"inv046",size:"325/30R21",qty:2,cost:0,notes:""},{id:"inv047",size:"275/40R22",qty:3,cost:0,notes:""},{id:"inv048",size:"275/50R22",qty:3,cost:0,notes:""},{id:"inv049",size:"285/40R22",qty:1,cost:0,notes:""},{id:"inv050",size:"285/45R22",qty:2,cost:0,notes:""},{id:"inv051",size:"315/35R22",qty:2,cost:0,notes:""},{id:"inv052",size:"325/30R23",qty:1,cost:0,notes:""},
 ];
+const DEFAULT_SERVICE_PRICING = {
+  "Flat Tire Repair":        {enabled:true, basePrice:90,  minProfit:90},
+  "Tire Replacement":        {enabled:true, basePrice:120, minProfit:110},
+  "Mobile Tire Service":     {enabled:true, basePrice:150, minProfit:110},
+  "Roadside Assistance":     {enabled:true, basePrice:100, minProfit:70},
+  "Tractor-Trailer Service": {enabled:true, basePrice:350, minProfit:280},
+  "Spare Tire Change":       {enabled:true, basePrice:95,  minProfit:70},
+  "Tire Rotation":           {enabled:true, basePrice:80,  minProfit:60},
+  "Jump Start":              {enabled:true, basePrice:85,  minProfit:60},
+  "Fuel Delivery":           {enabled:true, basePrice:95,  minProfit:65},
+  "Lockout Service":         {enabled:true, basePrice:90,  minProfit:65},
+};
+const DEFAULT_VEHICLE_PRICING = {
+  "Car":             {addOnProfit:0},
+  "SUV / Truck":     {addOnProfit:20},
+  "Semi-Truck":      {addOnProfit:80},
+  "Tractor-Trailer": {addOnProfit:120},
+};
 const DEFAULT_SETTINGS = {
   businessName:"Wheel Rush Mobile Tire Repair", owner1Name:"Owner 1", owner2Name:"Owner 2",
   owner1Active:true, owner2Active:true, profitSplit1:50, profitSplit2:50,
   weeklyGoal:1200, taxRate:25, repairTarget:90, replacementTarget:110,
   skipThreshold:70, riskyMiles:25, costPerMile:0.65,
   googleReviewUrl:"https://g.page/r/CfMRJkXrNBO5EBM/review",
+  servicePricing: DEFAULT_SERVICE_PRICING,
+  vehiclePricing: DEFAULT_VEHICLE_PRICING,
   expenses:[
     {id:"e1",name:"Van Insurance",amount:434,active:true},{id:"e2",name:"Marketing",amount:599,active:true},
     {id:"e3",name:"Google PPC",amount:750,active:true},{id:"e4",name:"Phone Bill",amount:250,active:true},
@@ -453,7 +475,8 @@ const DEFAULT_SETTINGS = {
   ],
 };
 const EMPTY_JOB = () => ({
-  id:"", date:TODAY(), service:"Tire Repair", area:"Miami", payment:"Cash",
+  id:"", date:TODAY(), service:"Flat Tire Repair", vehicleType:"Car",
+  area:"Miami", payment:"Cash",
   status:"Completed", source:"Google", customerName:"", customerPhone:"",
   tireSize:"", qty:1, revenue:"", tireCost:"", miscCost:"", miles:"", note:"",
   emergency:false, lateNight:false, highway:false, weekend:false,
@@ -470,11 +493,28 @@ function premiums(j) {
   if (Number(j.miles||0)>25) p+=20;
   return p;
 }
+function getServicePricing(service, s) {
+  const sp = (s && s.servicePricing) || DEFAULT_SERVICE_PRICING;
+  return sp[service] || DEFAULT_SERVICE_PRICING[service] || {enabled:true, basePrice:90, minProfit:60};
+}
+function getVehicleAddOn(vehicleType, s) {
+  const vp = (s && s.vehiclePricing) || DEFAULT_VEHICLE_PRICING;
+  const v  = vp[vehicleType] || DEFAULT_VEHICLE_PRICING[vehicleType] || {addOnProfit:0};
+  return Number(v.addOnProfit || 0);
+}
 function suggestedPrice(j,s) {
-  const direct = jobDirectCost(j,s);
-  const isRepl = /replacement|installation/i.test(j.service||"");
-  const target = isRepl ? Number(s.replacementTarget||110) : Number(s.repairTarget||90);
-  return Math.ceil((direct+target+premiums(j))/5)*5;
+  const direct    = jobDirectCost(j,s);
+  const svcRule   = getServicePricing(j.service, s);
+  const basePrice = Number(svcRule.basePrice || 90);
+  const minProfit = Number(svcRule.minProfit || 60);
+  const vehicleAdd= getVehicleAddOn(j.vehicleType, s);
+  const surcharge = premiums(j);
+  // Suggested = base + vehicle add-on + travel/tire/misc costs + surcharges
+  let price = basePrice + vehicleAdd + direct + surcharge;
+  // Enforce minimum profit rule: price must cover costs + minProfit + vehicleAdd
+  const floor = direct + minProfit + vehicleAdd + surcharge;
+  if (price < floor) price = floor;
+  return Math.ceil(price/5)*5;
 }
 function getWeekStart(d) {
   const dt = new Date(d+"T12:00:00"), day = dt.getDay();
@@ -521,7 +561,8 @@ function dedupeInventory(items) {
 }
 function sanitizeJob(j) {
   return {
-    id: String(j.id||uid()), date: String(j.date||TODAY()), service: String(j.service||"Tire Repair"),
+    id: String(j.id||uid()), date: String(j.date||TODAY()), service: String(j.service||"Flat Tire Repair"),
+    vehicleType: String(j.vehicleType||"Car"),
     area: String(j.area||"Miami"), payment: String(j.payment||"Cash"), status: String(j.status||"Completed"),
     source: String(j.source||""), customerName: String(j.customerName||""),
     customerPhone: String(j.customerPhone||""), tireSize: String(j.tireSize||""),
@@ -806,8 +847,9 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
   const hasInputs=Number(form.miles||0)>0||Number(form.tireCost||0)>0||Number(form.miscCost||0)>0;
   const directCost=jobDirectCost(form,settings);
   const suggested=suggestedPrice(form,settings);
-  const isRepl=/replacement|installation/i.test(form.service||"");
-  const premiumPrice=Math.ceil((directCost+(isRepl?130:105)+premiums(form))/5)*5;
+  const svcRule=getServicePricing(form.service, settings);
+  const vehicleAdd=getVehicleAddOn(form.vehicleType, settings);
+  const premiumPrice=Math.ceil((directCost+Number(svcRule.basePrice||100)+vehicleAdd+Math.max(30,Number(svcRule.minProfit||60)*0.3)+premiums(form))/5)*5;
   const prem=premiums(form);
   const skip=Number(settings.skipThreshold||70);
   const dispPrice=priceMode==="custom"?Number(form.revenue||0):(priceMode==="premium"?premiumPrice:suggested);
@@ -905,7 +947,7 @@ function Header({syncStatus,onSignOut}) {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
-  const [qqForm,setQqForm]=useState({service:"Tire Repair",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});
+  const [qqForm,setQqForm]=useState({service:"Flat Tire Repair",vehicleType:"Car",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});
   const [qqMode,setQqMode]=useState("suggested");
   const qqChange=(k,v)=>setQqForm(p=>({...p,[k]:v}));
   const qqApply=price=>setQqForm(p=>({...p,revenue:price}));
@@ -956,11 +998,17 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
     <div class="card-anim">
       <div class="section-label" style=${{marginTop:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <span>Quick Quote</span>
-        ${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{if(onStartJob)onStartJob(qqForm);setQqForm({service:"Tire Repair",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});setQqMode("suggested");}}>Start Job →</button>`}
+        ${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{if(onStartJob)onStartJob(qqForm);setQqForm({service:"Flat Tire Repair",vehicleType:"Car",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});setQqMode("suggested");}}>Start Job →</button>`}
       </div>
       <div style=${{marginBottom:4}}>
+        <div style=${{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+          ${SERVICE_KEYS.filter(s=>{
+            const sp=(settings.servicePricing||{})[s]||DEFAULT_SERVICE_PRICING[s];
+            return sp && sp.enabled!==false && s!=="Other";
+          }).slice(0,5).map(s=>html`<button key=${s} type="button" class=${"chip press-scale"+(qqForm.service===s?" active":"")} onClick=${()=>qqChange("service",s)} style=${{fontSize:11,padding:"5px 10px"}}>${s.replace("Mobile Tire Service","Mobile").replace("Flat Tire Repair","Repair").replace("Tire Replacement","Replace").replace("Roadside Assistance","Roadside").replace("Tractor-Trailer Service","T-Trailer").replace("Spare Tire Change","Spare").replace("Tire Rotation","Rotation").replace("Jump Start","Jump").replace("Fuel Delivery","Fuel").replace("Lockout Service","Lockout")}</button>`)}
+        </div>
         <div style=${{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-          ${["Tire Repair","Tire Replacement","Tire Installation"].map(s=>html`<button key=${s} type="button" class=${"chip press-scale"+(qqForm.service===s?" active":"")} onClick=${()=>qqChange("service",s)} style=${{fontSize:11,padding:"5px 10px"}}>${s.replace("Tire ","")}</button>`)}
+          ${VEHICLE_TYPES.map(v=>html`<button key=${v} type="button" class=${"chip press-scale"+(qqForm.vehicleType===v?" active":"")} onClick=${()=>qqChange("vehicleType",v)} style=${{fontSize:11,padding:"5px 10px"}}>${v}</button>`)}
         </div>
         <div style=${{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
           ${FLAGS.map(([k,label])=>html`<button key=${k} type="button" class=${"chip press-scale"+(qqForm[k]?" active":"")} onClick=${()=>qqChange(k,!qqForm[k])} style=${{fontSize:10,padding:"4px 8px"}}>${label}</button>`)}
@@ -1045,12 +1093,12 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
       if(onClearEdit)onClearEdit();return;
     }
     if(prefill){
-      setForm({...EMPTY_JOB(),service:prefill.service||"Tire Repair",area:prefill.area||"Miami",payment:prefill.payment||"Cash",source:prefill.source||"Google",tireSize:prefill.tireSize||"",qty:prefill.qty||1,tireCost:String(prefill.tireCost||""),miscCost:String(prefill.miscCost||""),miles:String(prefill.miles||""),emergency:!!prefill.emergency,lateNight:!!prefill.lateNight,highway:!!prefill.highway,weekend:!!prefill.weekend,customerName:prefill.customerName||"",customerPhone:prefill.customerPhone||""});
+      setForm({...EMPTY_JOB(),service:prefill.service||"Flat Tire Repair",vehicleType:prefill.vehicleType||"Car",area:prefill.area||"Miami",payment:prefill.payment||"Cash",source:prefill.source||"Google",tireSize:prefill.tireSize||"",qty:prefill.qty||1,tireCost:String(prefill.tireCost||""),miscCost:String(prefill.miscCost||""),miles:String(prefill.miles||""),emergency:!!prefill.emergency,lateNight:!!prefill.lateNight,highway:!!prefill.highway,weekend:!!prefill.weekend,customerName:prefill.customerName||"",customerPhone:prefill.customerPhone||""});
       setPriceMode("suggested");if(onClearPrefill)onClearPrefill();
     }
   },[prefill,editJob]);
   const setF=(k,v)=>{setForm(p=>({...p,[k]:v}));setError("");};
-  const useLastJob=()=>{if(!lastJob)return;setForm({...EMPTY_JOB(),service:lastJob.service,area:lastJob.area,payment:lastJob.payment,source:lastJob.source||"Google",tireSize:lastJob.tireSize,tireCost:String(lastJob.tireCost||""),miscCost:String(lastJob.miscCost||""),miles:String(lastJob.miles||""),emergency:lastJob.emergency,lateNight:lastJob.lateNight,highway:lastJob.highway,weekend:lastJob.weekend});};
+  const useLastJob=()=>{if(!lastJob)return;setForm({...EMPTY_JOB(),service:lastJob.service,vehicleType:lastJob.vehicleType||"Car",area:lastJob.area,payment:lastJob.payment,source:lastJob.source||"Google",tireSize:lastJob.tireSize,tireCost:String(lastJob.tireCost||""),miscCost:String(lastJob.miscCost||""),miles:String(lastJob.miles||""),emergency:lastJob.emergency,lateNight:lastJob.lateNight,highway:lastJob.highway,weekend:lastJob.weekend});};
   const doSave=async(andAdd=false)=>{
     const rev=Number(form.revenue||0);if(!rev){setError("Enter the job price.");return;}
     if(form.tireSize){try{const p=load(KEYS.sizes,[]);persist(KEYS.sizes,[form.tireSize,...p.filter(s=>s!==form.tireSize)].slice(0,10));}catch{}}
@@ -1094,7 +1142,8 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
       </div>
       <div class="form-group card-anim">
         <div class="form-group-title">Job Details</div>
-        <div class="field"><label>Service</label><select value=${form.service} onChange=${e=>setF("service",e.target.value)} style=${{width:"100%",border:"1px solid var(--border)",background:"var(--s3)",color:"var(--t1)",borderRadius:"var(--r3)",padding:"13px 15px",outline:"none",fontSize:16}}>${SERVICE_OPTIONS.map(s=>html`<option key=${s}>${s}</option>`)}</select></div>
+        <div class="field"><label>Service</label><select value=${form.service} onChange=${e=>setF("service",e.target.value)} style=${{width:"100%",border:"1px solid var(--border)",background:"var(--s3)",color:"var(--t1)",borderRadius:"var(--r3)",padding:"13px 15px",outline:"none",fontSize:16}}>${SERVICE_OPTIONS.filter(s=>{const sp=(settings.servicePricing||{})[s]||DEFAULT_SERVICE_PRICING[s];return s==="Other"||!sp||sp.enabled!==false;}).map(s=>html`<option key=${s}>${s}</option>`)}</select></div>
+        <div class="field"><label>Vehicle Type</label><div class="chip-row">${VEHICLE_TYPES.map(v=>{const addOn=getVehicleAddOn(v,settings);return html`<button key=${v} type="button" class=${"chip"+(form.vehicleType===v?" active":"")} onClick=${()=>setF("vehicleType",v)}>${v}${addOn>0?" +$"+addOn:""}</button>`;})}</div></div>
         <div class="field-row"><div class="field"><label>Date</label><input type="date" value=${form.date} onChange=${e=>setF("date",e.target.value)}/></div><div class="field"><label>Status</label><select value=${form.status} onChange=${e=>setF("status",e.target.value)}><option>Completed</option><option>Pending</option></select></div></div>
         <div class="field"><label>Lead Source</label><div class="src-grid">${SOURCE_QUICK.map(s=>html`<button key=${s.label} type="button" class=${"src-btn press-scale"+(form.source===s.label?" active":"")} onClick=${()=>setF("source",s.label)}>${s.icon+" "+s.label}</button>`)}</div></div>
       </div>
@@ -1611,6 +1660,59 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
       <div class="settings-row"><div class="label">Replacement Target $</div><input type="number" class="settings-inp" style=${{width:90}} value=${settings.replacementTarget||""} onChange=${e=>upd("replacementTarget",Number(e.target.value||0))}/></div>
       <div class="settings-row"><div class="label">Cost Per Mile $</div><input type="number" step="0.01" class="settings-inp" style=${{width:90}} value=${settings.costPerMile||""} onChange=${e=>upd("costPerMile",Number(e.target.value||0))}/></div>
     </div>
+    <div class="section-label">Service Pricing Rules</div>
+    <div class="card card-anim" style=${{marginBottom:14,padding:"4px 0"}}>
+      ${SERVICE_KEYS.filter(k=>k!=="Other").map(name=>{
+        const rule=(settings.servicePricing||{})[name]||DEFAULT_SERVICE_PRICING[name]||{enabled:true,basePrice:90,minProfit:60};
+        const patchSvc=(patch)=>setSettings(p=>({...p,servicePricing:{...((p&&p.servicePricing)||DEFAULT_SERVICE_PRICING),[name]:{...rule,...patch}}}));
+        return html`<div key=${name} style=${{padding:"14px 18px",borderBottom:"1px solid var(--border2)",opacity:rule.enabled===false?0.5:1}}>
+          <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div style=${{fontSize:14,fontWeight:700,color:"var(--t1)",letterSpacing:"-.2px"}}>${name}</div>
+            <button onClick=${()=>patchSvc({enabled:!rule.enabled})} style=${{border:"none",borderRadius:20,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer",background:rule.enabled!==false?"var(--green)":"var(--s3)",color:rule.enabled!==false?"#fff":"var(--t3)"}}>${rule.enabled!==false?"ON":"OFF"}</button>
+          </div>
+          <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <div>
+              <div style=${{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"var(--t3)",marginBottom:5}}>Base Price</div>
+              <div style=${{position:"relative"}}>
+                <span style=${{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--t3)",fontSize:14,pointerEvents:"none"}}>$</span>
+                <input type="number" min="0" value=${rule.basePrice||""} onChange=${e=>patchSvc({basePrice:Number(e.target.value||0)})} style=${{border:"1px solid var(--border)",background:"var(--s3)",color:"var(--t1)",borderRadius:10,padding:"10px 13px 10px 24px",fontSize:15,fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,outline:"none",width:"100%"}}/>
+              </div>
+            </div>
+            <div>
+              <div style=${{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"var(--t3)",marginBottom:5}}>Min Profit</div>
+              <div style=${{position:"relative"}}>
+                <span style=${{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--t3)",fontSize:14,pointerEvents:"none"}}>$</span>
+                <input type="number" min="0" value=${rule.minProfit||""} onChange=${e=>patchSvc({minProfit:Number(e.target.value||0)})} style=${{border:"1px solid var(--border)",background:"var(--s3)",color:"var(--t1)",borderRadius:10,padding:"10px 13px 10px 24px",fontSize:15,fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,outline:"none",width:"100%"}}/>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      })}
+    </div>
+
+    <div class="section-label">Vehicle Profit Add-On</div>
+    <div class="inline-note" style=${{padding:"0 4px"}}>Bigger vehicles = more profit. Add-on stacks with the service rule.</div>
+    <div class="card card-anim" style=${{marginBottom:14}}>
+      ${VEHICLE_TYPES.map(name=>{
+        const rule=(settings.vehiclePricing||{})[name]||DEFAULT_VEHICLE_PRICING[name]||{addOnProfit:0};
+        const patchVeh=(patch)=>setSettings(p=>({...p,vehiclePricing:{...((p&&p.vehiclePricing)||DEFAULT_VEHICLE_PRICING),[name]:{...rule,...patch}}}));
+        const icon=name==="Car"?"🚗":name==="SUV / Truck"?"🛻":name==="Semi-Truck"?"🚚":"🚛";
+        return html`<div key=${name} class="settings-row">
+          <div style=${{display:"flex",alignItems:"center",gap:10,flex:1}}>
+            <div style=${{fontSize:20}}>${icon}</div>
+            <div>
+              <div style=${{fontSize:14,fontWeight:700,color:"var(--t1)"}}>${name}</div>
+              <div style=${{fontSize:10,color:"var(--t3)",marginTop:2}}>Profit add-on</div>
+            </div>
+          </div>
+          <div style=${{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+            <span style=${{fontSize:14,color:"var(--t3)",fontWeight:600}}>+$</span>
+            <input type="number" min="0" class="settings-inp" style=${{width:78,fontFamily:'"IBM Plex Mono",monospace',fontWeight:700}} value=${rule.addOnProfit||""} onChange=${e=>patchVeh({addOnProfit:Number(e.target.value||0)})}/>
+          </div>
+        </div>`;
+      })}
+    </div>
+
     <div class="section-label">Google Review Link</div>
     <div class="card card-anim"><div class="card-pad"><input class="settings-inp" style=${{width:"100%"}} value=${settings.googleReviewUrl||""} onChange=${e=>upd("googleReviewUrl",e.target.value)} placeholder="https://g.page/r/…/review"/></div></div>
     <div class="section-label">Monthly Fixed Expenses</div>
@@ -1644,6 +1746,18 @@ function App() {
       try { const p=JSON.parse(merged.expenses||"[]"); merged.expenses=Array.isArray(p)?p:DEFAULT_SETTINGS.expenses; }
       catch { merged.expenses = DEFAULT_SETTINGS.expenses; }
     }
+    // Ensure servicePricing and vehiclePricing are objects
+    if (typeof merged.servicePricing === "string") {
+      try { merged.servicePricing = JSON.parse(merged.servicePricing); } catch { merged.servicePricing = DEFAULT_SERVICE_PRICING; }
+    }
+    if (!merged.servicePricing || typeof merged.servicePricing !== "object") merged.servicePricing = DEFAULT_SERVICE_PRICING;
+    if (typeof merged.vehiclePricing === "string") {
+      try { merged.vehiclePricing = JSON.parse(merged.vehiclePricing); } catch { merged.vehiclePricing = DEFAULT_VEHICLE_PRICING; }
+    }
+    if (!merged.vehiclePricing || typeof merged.vehiclePricing !== "object") merged.vehiclePricing = DEFAULT_VEHICLE_PRICING;
+    // Merge in any missing default services/vehicles (migration for new additions)
+    merged.servicePricing = {...DEFAULT_SERVICE_PRICING, ...merged.servicePricing};
+    merged.vehiclePricing = {...DEFAULT_VEHICLE_PRICING, ...merged.vehiclePricing};
     return merged;
   });
   const [inventory,setInventory] = useState(()=>{const r=load(KEYS.inventory,null);return Array.isArray(r)?r:DEFAULT_INVENTORY.map(i=>({...i}));});
@@ -1686,7 +1800,7 @@ function App() {
       u4=settingDoc().onSnapshot(snap=>{
         if(snap&&snap.exists){
           const d=snap.data();
-          Object.keys(d).forEach(k=>{if(typeof d[k]==="string"){try{const p=JSON.parse(d[k]);if(Array.isArray(p))d[k]=p;}catch{}}});
+          Object.keys(d).forEach(k=>{if(typeof d[k]==="string"&&(d[k].startsWith("{")||d[k].startsWith("["))){try{const p=JSON.parse(d[k]);if(p&&typeof p==="object")d[k]=p;}catch{}}});
           setSettings(prev=>{const merged={...DEFAULT_SETTINGS,...prev,...d};if(!Array.isArray(merged.expenses))merged.expenses=DEFAULT_SETTINGS.expenses;persist(KEYS.settings,merged);return merged;});
         }
       },()=>{});
