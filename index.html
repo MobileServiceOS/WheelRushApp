@@ -2144,32 +2144,91 @@ function App() {
     try{
       const id=job.id||uid();
       const isNew=!job.id;
+      const safeInventory=Array.isArray(inventory)?inventory:[];
+      const safeJobs=Array.isArray(jobs)?jobs:[];
       const full={...job,id};
       if(full.tireSize){const sz=load(KEYS.sizes,[]);persist(KEYS.sizes,[full.tireSize,...sz.filter(s=>s!==full.tireSize)].slice(0,12));}
       if(full.area){const ct=load(KEYS.cities,[]);persist(KEYS.cities,[full.area,...ct.filter(c=>c!==full.area)].slice(0,12));}
 
-      // Inventory deduction ONLY on new tire-related jobs (not on edits — edit doesn't replay deductions)
-      const isTireJob=/replacement|installation/i.test(full.service);
-      if(isNew && isTireJob && full.tireSize){
-        const qtyNeeded=Math.max(1,Number(full.qty||1));
-        sizeNormalized=normalizeTireSize(full.tireSize);
-        const plan=planInventoryDeduction(inventory,full.tireSize,qtyNeeded);
-        if(plan){
-          foundAny=true;
-          applyInventoryDeduction(plan,setInventory,user);
-          deductions=plan.plan;
-          shortfall=plan.shortfall||0;
-        }
-        full.inventoryDeducted=!!deductions;
-        full.inventoryDeductions=deductions||null;
-        full.inventoryShortfall=shortfall;
+      // ── Inventory deduction (runs for both new + edit) ─────────────────
+      const isTireJob = full.service === "Tire Replacement" || /replacement|installation/i.test(full.service||"");
+      const qtyNeeded = Math.max(0, Number(full.qty||0));
+
+      // Find existing job (for edit-replay)
+      const prevJob = !isNew ? safeJobs.find(j=>j.id===id) : null;
+      let prevDeds = null;
+      if (prevJob && prevJob.inventoryDeducted) {
+        let raw = prevJob.inventoryDeductions;
+        if (typeof raw === "string") { try { raw = JSON.parse(raw); } catch { raw = null; } }
+        if (Array.isArray(raw) && raw.length>0) prevDeds = raw;
       }
 
-      setJobs(prev=>{const exists=prev.find(j=>j.id===id);const next=exists?prev.map(j=>j.id===id?full:j):[full,...prev];persist(KEYS.jobs,next);return next;});
+      // Detect whether a new deduction is actually needed (tire size or qty changed, or new job)
+      const prevSize = prevJob ? String(prevJob.tireSize||"") : "";
+      const prevQty  = prevJob ? Number(prevJob.qty||0) : 0;
+      const sizeChanged = String(full.tireSize||"") !== prevSize;
+      const qtyChanged  = qtyNeeded !== prevQty;
+      const needsRestore = !!prevDeds && (isNew===false) && (sizeChanged || qtyChanged || !isTireJob || !full.tireSize || qtyNeeded<=0);
+      const needsDeduct  = isTireJob && !!full.tireSize && qtyNeeded>0 && (isNew || sizeChanged || qtyChanged);
+
+      // Build "what inventory looks like after restore" so we can safely check availability
+      let workingInv = safeInventory;
+      if (needsRestore) {
+        const addMap = {};
+        prevDeds.forEach(d => { addMap[d.id] = (addMap[d.id]||0) + (Number(d.deducted)||0); });
+        workingInv = workingInv.map(i => addMap[i.id] ? {...i, qty:(Number(i.qty)||0)+addMap[i.id]} : i);
+      }
+
+      // Plan deduction against workingInv (post-restore snapshot)
+      let plan = null;
+      if (needsDeduct) {
+        sizeNormalized = normalizeTireSize(full.tireSize);
+        plan = planInventoryDeduction(workingInv, full.tireSize, qtyNeeded);
+        if (plan) foundAny = true;
+
+        // BLOCK on insufficient stock
+        if (plan && plan.shortfall > 0) {
+          alert("Not enough inventory for this job. Needed "+qtyNeeded+" of "+(sizeNormalized||full.tireSize)+", have "+(plan.totalDeducted||0)+".");
+          setSaving(false);
+          return null;
+        }
+        if (!plan) {
+          alert("Not enough inventory for this job. No "+(sizeNormalized||full.tireSize)+" in stock.");
+          setSaving(false);
+          return null;
+        }
+      }
+
+      // Apply restore + deduct to real state
+      if (needsRestore) restoreInventoryDeduction(prevDeds, setInventory, user);
+      if (plan) applyInventoryDeduction(plan, setInventory, user);
+
+      if (plan) {
+        deductions = plan.plan;
+        shortfall = plan.shortfall||0;
+        full.inventoryDeducted = true;
+        full.inventoryDeductions = deductions;
+        full.inventoryShortfall = shortfall;
+        full.inventoryUsed = { size: normalizeTireSize(full.tireSize) || String(full.tireSize||""), qty: qtyNeeded };
+      } else if (needsRestore) {
+        // Restored and not re-deducting (e.g. service changed away from Tire Replacement)
+        full.inventoryDeducted = false;
+        full.inventoryDeductions = null;
+        full.inventoryShortfall = 0;
+        full.inventoryUsed = null;
+      } else if (prevJob) {
+        // No-op edit: preserve existing markers
+        full.inventoryDeducted = !!prevJob.inventoryDeducted;
+        full.inventoryDeductions = prevDeds;
+        full.inventoryShortfall = Number(prevJob.inventoryShortfall||0);
+        full.inventoryUsed = prevJob.inventoryUsed || null;
+      }
+
+      setJobs(prev=>{const arr=Array.isArray(prev)?prev:[];const exists=arr.find(j=>j.id===id);const next=exists?arr.map(j=>j.id===id?full:j):[full,...arr];persist(KEYS.jobs,next);return next;});
 
       if(user && jobCol()){
-        // Flatten deductions to JSON string since fbSet strips nested objects/arrays
-        const dedStr = full.inventoryDeductions ? JSON.stringify(full.inventoryDeductions) : "";
+        const dedStr = Array.isArray(full.inventoryDeductions) ? JSON.stringify(full.inventoryDeductions) : "";
+        const usedStr = full.inventoryUsed ? JSON.stringify(full.inventoryUsed) : "";
         await fbSet(jobCol(),id,{
           id,date:String(full.date||""),service:String(full.service||""),vehicleType:String(full.vehicleType||""),area:String(full.area||""),source:String(full.source||""),payment:String(full.payment||""),status:String(full.status||"Completed"),
           customerName:String(full.customerName||""),customerPhone:String(full.customerPhone||""),
@@ -2180,13 +2239,14 @@ function App() {
           inventoryDeducted:!!full.inventoryDeducted,
           inventoryDeductions: dedStr,
           inventoryShortfall: Number(full.inventoryShortfall||0),
+          inventoryUsed: usedStr,
         });
       }
       if(!addAnother){setTab("dashboard");setEditJob(null);}
     }catch(e){console.warn("saveJob:",e);}
     finally{setSaving(false);}
     return { deductions, shortfall, sizeNormalized, foundAny };
-  },[user,inventory]);
+  },[user,inventory,jobs]);
 
   // ── Expense handler (BUG 3 FIX) ──────────────────────────────────────────
   const handleSetExpenses=useCallback(updater=>{
@@ -2206,9 +2266,10 @@ function App() {
   // ── Inventory handler ─────────────────────────────────────────────────────
   const handleSetInventory=useCallback(updater=>{
     setInventory(prev=>{
-      const next=typeof updater==="function"?updater(prev):updater;
+      const prevArr=Array.isArray(prev)?prev:[];
+      const raw=typeof updater==="function"?updater(prevArr):updater;
+      const next=Array.isArray(raw)?raw:prevArr;
       persist(KEYS.inventory,next);
-      // Only push items that have a size to Firebase — blank rows stay local
       if(user&&invCol()) next.filter(x=>(x.size||"").trim()).forEach(x=>fbSet(invCol(),x.id,{id:String(x.id),size:String(x.size||""),brand:String(x.brand||""),model:String(x.model||""),condition:String(x.condition||"New"),qty:Number(x.qty||0),cost:Number(x.cost||0),sellPrice:Number(x.sellPrice||0),notes:String(x.notes||"")}));
       return next;
     });
@@ -2219,17 +2280,20 @@ function App() {
   const handleEdit    =useCallback(job=>{setEditJob(job);setTab("add");},[]);
   const handleStartJob=useCallback(qqForm=>{setPrefill({...EMPTY_JOB(),...qqForm});setTab("add");},[]);
   const signOut       =useCallback(()=>{if(_auth)_auth.signOut().catch(()=>{});},[]);
+  // Ref to prevent double-restore across rapid-fire calls (e.g. delete tapped twice)
+  const restoredOnceRef = useRef(new Set());
   const deleteJob=useCallback(async id=>{
-    // Restore inventory if this job had deductions (accept either array or JSON string from Firestore)
-    const targetJob=jobs.find(j=>j.id===id);
-    if(targetJob&&targetJob.inventoryDeducted){
+    const safeJobs=Array.isArray(jobs)?jobs:[];
+    const targetJob=safeJobs.find(j=>j.id===id);
+    // Restore inventory (only once per id)
+    if(targetJob&&targetJob.inventoryDeducted&&!restoredOnceRef.current.has(id)){
       let deds=targetJob.inventoryDeductions;
       if(typeof deds==="string"){try{deds=JSON.parse(deds);}catch{deds=null;}}
       if(Array.isArray(deds)&&deds.length>0){
-        try{restoreInventoryDeduction(deds,setInventory,user);}catch(e){console.warn("restore:",e);}
+        try{restoreInventoryDeduction(deds,setInventory,user);restoredOnceRef.current.add(id);}catch(e){console.warn("restore:",e);}
       }
     }
-    setJobs(prev=>{const next=prev.filter(j=>j.id!==id);persist(KEYS.jobs,next);return next;});
+    setJobs(prev=>{const arr=Array.isArray(prev)?prev:[];const next=arr.filter(j=>j.id!==id);persist(KEYS.jobs,next);return next;});
     if(user&&jobCol())await fbDel(jobCol(),id);
   },[user,jobs]);
 
