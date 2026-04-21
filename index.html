@@ -1246,18 +1246,23 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
     const entry=sanitizeJob({...form,id:editingId||uid(),qty:Number(form.qty||1),revenue:r2(rev),tireCost:r2(form.tireCost),miscCost:r2(form.miscCost),miles:r2(form.miles)});
     const result=await onSave(entry,isEditing?false:andAdd);setTick(t=>t+1);
 
-    // Inventory feedback (only on new tire jobs)
+    // Inventory feedback (fires on new + edited tire jobs)
     setInvFeedback(null);
-    if(!isEditing && result && entry.tireSize && /replacement|installation/i.test(entry.service)){
+    if(result && entry.tireSize && /replacement|installation/i.test(entry.service||"")){
       const qtyNeeded=Math.max(1,Number(entry.qty||1));
       const sizeNorm=result.sizeNormalized||normalizeTireSize(entry.tireSize);
+      const short=Number(result.shortfall||0);
       if(result.deductions && result.deductions.length>0){
         const total=result.deductions.reduce((s,x)=>s+x.deducted,0);
-        if(result.shortfall>0){
-          setInvFeedback({kind:"partial", total, short:result.shortfall, size:sizeNorm});
+        if(short>0){
+          setInvFeedback({kind:"partial", total, short, size:sizeNorm});
         } else {
           setInvFeedback({kind:"deducted", total, size:sizeNorm});
         }
+      } else if(short>0 && sizeNorm){
+        // Shortage with nothing matched — show shortfall-only banner
+        setInvFeedback({kind:"shortfall", short, size:sizeNorm, qty:qtyNeeded,
+          brand:entry.tireBrand||"", model:entry.tireModel||""});
       } else if(sizeNorm){
         setInvFeedback({kind:"missing", size:sizeNorm, qty:qtyNeeded,
           brand:entry.tireBrand||"", model:entry.tireModel||""});
@@ -1289,17 +1294,24 @@ function AddJob({onSave,settings,jobs,prefill,onClearPrefill,editJob,onClearEdit
       </div>`}
 
       ${invFeedback&&invFeedback.kind==="deducted"&&html`<div style=${{background:"var(--green-dim,rgba(34,197,94,.08))",border:"1px solid rgba(34,197,94,.3)",borderRadius:12,padding:"10px 14px",fontSize:13,color:"var(--green,#22c55e)",marginBottom:14,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-        <span>📦 Deducted ${invFeedback.total} ${invFeedback.total===1?"tire":"tires"} (${invFeedback.size}) from stock.</span>
+        <span>✓ Inventory updated — ${invFeedback.total} × ${invFeedback.size}</span>
         <button class="btn secondary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>setInvFeedback(null)}>✕</button>
       </div>`}
       ${invFeedback&&invFeedback.kind==="partial"&&html`<div style=${{background:"var(--amber-dim)",border:"1px solid rgba(234,179,8,.35)",borderRadius:12,padding:"10px 14px",fontSize:13,color:"var(--amber)",marginBottom:14,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
-        <span>⚠️ Took ${invFeedback.total} from stock — short ${invFeedback.short} (${invFeedback.size}).</span>
+        <span>⚠ Inventory updated (${invFeedback.total} × ${invFeedback.size}) — shortfall: ${invFeedback.short} tire${invFeedback.short===1?"":"s"}</span>
         <button class="btn secondary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>setInvFeedback(null)}>✕</button>
       </div>`}
-      ${invFeedback&&invFeedback.kind==="missing"&&html`<div style=${{background:"rgba(79,142,247,.08)",border:"1px solid rgba(79,142,247,.25)",borderRadius:12,padding:"12px 14px",fontSize:13,color:"var(--t1)",marginBottom:14,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-        <span>🛞 No ${invFeedback.size} tires in stock.</span>
+      ${invFeedback&&invFeedback.kind==="shortfall"&&html`<div style=${{background:"var(--amber-dim)",border:"1px solid rgba(234,179,8,.35)",borderRadius:12,padding:"10px 14px",fontSize:13,color:"var(--amber)",marginBottom:14,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+        <span>⚠ Inventory shortfall: ${invFeedback.short} tire${invFeedback.short===1?"":"s"} (${invFeedback.size})</span>
         <div style=${{display:"flex",gap:6}}>
-          ${onSwitchToInventory&&html`<button class="btn primary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>{onSwitchToInventory();setInvFeedback(null);}}>+ Add to Stock</button>`}
+          ${onSwitchToInventory&&html`<button class="btn primary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>{onSwitchToInventory();setInvFeedback(null);}}>+ Add Stock</button>`}
+          <button class="btn secondary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>setInvFeedback(null)}>✕</button>
+        </div>
+      </div>`}
+      ${invFeedback&&invFeedback.kind==="missing"&&html`<div style=${{background:"rgba(79,142,247,.08)",border:"1px solid rgba(79,142,247,.25)",borderRadius:12,padding:"12px 14px",fontSize:13,color:"var(--t1)",marginBottom:14,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+        <span>🛞 No ${invFeedback.size} in stock</span>
+        <div style=${{display:"flex",gap:6}}>
+          ${onSwitchToInventory&&html`<button class="btn primary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>{onSwitchToInventory();setInvFeedback(null);}}>+ Add Stock</button>`}
           <button class="btn secondary sm press-scale" style=${{padding:"4px 10px",fontSize:11}} onClick=${()=>setInvFeedback(null)}>✕</button>
         </div>
       </div>`}
@@ -1369,6 +1381,10 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
   const JobRow=({job})=>{
     const profit=jobGrossProfit(job,settings);const profitCls=profit>=70?"green":profit>=40?"orange":"red";
     const sendReview=()=>openReviewSMS(job.customerPhone,(settings.googleReviewUrl||"").trim(),job.customerName,job.service,job.area);
+    // Parse inventoryUsed (may be JSON string from Firestore)
+    let invUsed = job.inventoryUsed;
+    if (typeof invUsed === "string") { try { invUsed = JSON.parse(invUsed); } catch { invUsed = null; } }
+    const short = Number(job.inventoryShortfall||0);
     return html`<div class="card-anim" style=${{background:"var(--s1)",borderRadius:"var(--r2)",overflow:"hidden",border:"1px solid var(--border)",boxShadow:"var(--sh-card)"}}>
       <div style=${{padding:"15px 17px",display:"flex",alignItems:"flex-start",gap:12}}>
         <div class="job-icon">🛞</div>
@@ -1376,6 +1392,8 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
           <div class="job-title">${job.service||"Tire Service"}</div>
           <div class="job-meta">${job.area||"Miami"} · ${job.date||""}${job.tireSize?" · "+job.tireSize:""}</div>
           ${(job.customerName||job.customerPhone)&&html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>👤 ${job.customerName||""}${job.customerPhone?" · "+job.customerPhone:""}</div>`}
+          ${job.inventoryDeducted && invUsed && invUsed.size && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>📦 Used: ${invUsed.size}${invUsed.qty?" ×"+invUsed.qty:""}</div>`}
+          ${short>0 && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:1,fontWeight:600}}>⚠ Short: ${short} tire${short===1?"":"s"}</div>`}
           <div style=${{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}><span class=${"pill "+profitCls}>${money(profit)}</span>${job.status==="Pending"&&html`<span class="pill gold">Pending</span>`}</div>
         </div>
         <div style=${{textAlign:"right",flexShrink:0}}>
@@ -2091,7 +2109,23 @@ function App() {
   useEffect(()=>{
     if(!user){setSyncStatus("local");return;}
     setSyncStatus("syncing");
-    const u1=fbListen(jobCol(),docs=>{const arr=Array.isArray(docs)?docs:[];setJobs(arr);persist(KEYS.jobs,arr);setSyncStatus("connected");});
+    const u1=fbListen(jobCol(),docs=>{
+      const arr=Array.isArray(docs)?docs:[];
+      // Re-hydrate stringified fields from Firestore
+      const hydrated=arr.map(j=>{
+        const out={...j};
+        if(typeof out.inventoryDeductions==="string"){
+          try{ const p=JSON.parse(out.inventoryDeductions); out.inventoryDeductions=Array.isArray(p)?p:null; }
+          catch{ out.inventoryDeductions=null; }
+        }
+        if(typeof out.inventoryUsed==="string"){
+          try{ const p=JSON.parse(out.inventoryUsed); out.inventoryUsed=(p&&typeof p==="object")?p:null; }
+          catch{ out.inventoryUsed=null; }
+        }
+        return out;
+      });
+      setJobs(hydrated);persist(KEYS.jobs,hydrated);setSyncStatus("connected");
+    });
     const u2=fbListen(invCol(),docs=>{
       const docArr=Array.isArray(docs)?docs:[];
       if(docArr.length>0){
@@ -2186,30 +2220,24 @@ function App() {
         plan = planInventoryDeduction(workingInv, full.tireSize, qtyNeeded);
         if (plan) foundAny = true;
 
-        // BLOCK on insufficient stock
-        if (plan && plan.shortfall > 0) {
-          alert("Not enough inventory for this job. Needed "+qtyNeeded+" of "+(sizeNormalized||full.tireSize)+", have "+(plan.totalDeducted||0)+".");
-          setSaving(false);
-          return null;
-        }
+        // NON-BLOCKING: if no plan (no matching size at all), synthesize a shortfall-only record
         if (!plan) {
-          alert("Not enough inventory for this job. No "+(sizeNormalized||full.tireSize)+" in stock.");
-          setSaving(false);
-          return null;
+          plan = { plan: [], totalDeducted: 0, shortfall: qtyNeeded };
         }
       }
 
       // Apply restore + deduct to real state
       if (needsRestore) restoreInventoryDeduction(prevDeds, setInventory, user);
-      if (plan) applyInventoryDeduction(plan, setInventory, user);
+      if (plan && Array.isArray(plan.plan) && plan.plan.length > 0) applyInventoryDeduction(plan, setInventory, user);
 
       if (plan) {
-        deductions = plan.plan;
-        shortfall = plan.shortfall||0;
-        full.inventoryDeducted = true;
-        full.inventoryDeductions = deductions;
-        full.inventoryShortfall = shortfall;
-        full.inventoryUsed = { size: normalizeTireSize(full.tireSize) || String(full.tireSize||""), qty: qtyNeeded };
+        deductions = Array.isArray(plan.plan) ? plan.plan : [];
+        shortfall  = Number(plan.shortfall||0);
+        const didDeduct = deductions.length > 0;
+        full.inventoryDeducted    = didDeduct;
+        full.inventoryDeductions  = didDeduct ? deductions : null;
+        full.inventoryShortfall   = shortfall;
+        full.inventoryUsed        = { size: normalizeTireSize(full.tireSize) || String(full.tireSize||""), qty: qtyNeeded };
       } else if (needsRestore) {
         // Restored and not re-deducting (e.g. service changed away from Tire Replacement)
         full.inventoryDeducted = false;
