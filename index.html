@@ -771,14 +771,44 @@ function groupByWeek(jobs) {
     .forEach(j => { const k=getWeekStart(j.date); if(!map[k]) map[k]=[]; map[k].push(j); });
   return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));
 }
+// Month key: "YYYY-MM" from a "YYYY-MM-DD" date string
+const getMonthKey = d => String(d||"").slice(0,7);
+function monthLabel(key) {
+  // key = "YYYY-MM"
+  const [y,m] = String(key||"").split("-");
+  if (!y || !m) return key || "";
+  const dt = new Date(Number(y), Number(m)-1, 1);
+  return dt.toLocaleDateString("en-US",{timeZone:"America/New_York",month:"long",year:"numeric"});
+}
+function groupByMonth(jobs) {
+  const map = {};
+  [...(jobs||[])].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id))
+    .forEach(j => { const k=getMonthKey(j.date); if(!k) return; if(!map[k]) map[k]=[]; map[k].push(j); });
+  return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0]));
+}
 function weekSummary(weekJobs,s) {
   const jobs = Array.isArray(weekJobs)?weekJobs:[];
   const revenue     = r2(jobs.reduce((t,j)=>t+Number(j.revenue||0),0));
   const directCosts = r2(jobs.reduce((t,j)=>t+jobDirectCost(j,s),0));
   const grossProfit = r2(revenue-directCosts);
-  const fixed       = weeklyFixed(s);
+  // NOTE: fixed overhead intentionally NOT subtracted at the week level.
+  // Weekly fixed was misleading (forces overhead into every week regardless of activity).
+  // Monthly fixed is shown separately in the Monthly breakdown + Payouts.
+  return {revenue,directCosts,grossProfit,net:grossProfit,fixed:0};
+}
+
+// Monthly aggregation — revenue, costs, profit for a whole calendar month
+function monthSummary(monthJobs,s) {
+  const jobs = Array.isArray(monthJobs)?monthJobs:[];
+  const revenue     = r2(jobs.reduce((t,j)=>t+Number(j.revenue||0),0));
+  const tireCosts   = r2(jobs.reduce((t,j)=>t+Number(j.tireCost||0),0));
+  const miscCosts   = r2(jobs.reduce((t,j)=>t+Number(j.miscCost||0),0));
+  const travelCosts = r2(jobs.reduce((t,j)=>t+Number(j.miles||0)*Number(s.costPerMile||0.65),0));
+  const directCosts = r2(tireCosts+miscCosts+travelCosts);
+  const grossProfit = r2(revenue-directCosts);
+  const fixed       = monthlyFixed(s);
   const net         = r2(grossProfit-fixed);
-  return {revenue,directCosts,grossProfit,fixed,net};
+  return {revenue,tireCosts,miscCosts,travelCosts,directCosts,grossProfit,fixed,net};
 }
 function dedupeInventory(items) {
   const seen = {};
@@ -1224,13 +1254,15 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
   const qqApply=price=>setQqForm(p=>({...p,revenue:price}));
   const safeJobs=Array.isArray(jobs)?jobs:[];
   const today=TODAY(),thisWeek=getWeekStart(today);
+  const thisMonth=getMonthKey(today);
   const weekJobs=useMemo(()=>safeJobs.filter(j=>getWeekStart(j.date)===thisWeek),[safeJobs,thisWeek]);
+  const monthJobs=useMemo(()=>safeJobs.filter(j=>getMonthKey(j.date)===thisMonth),[safeJobs,thisMonth]);
   const todayJobs=useMemo(()=>safeJobs.filter(j=>j.date===today),[safeJobs,today]);
   const totals=useMemo(()=>weekSummary(weekJobs,settings),[weekJobs,settings]);
+  const monthly=useMemo(()=>monthSummary(monthJobs,settings),[monthJobs,settings]);
   const avgProfit=weekJobs.length?r2(totals.grossProfit/weekJobs.length):0;
   const goalPct=clamp((totals.grossProfit/(settings.weeklyGoal||1))*100,0,100);
   const jobsNeeded=avgProfit>0?Math.max(0,Math.ceil(((settings.weeklyGoal||0)-totals.grossProfit)/avgProfit)):"—";
-  const fixed=weeklyFixed(settings);
   const sources=useMemo(()=>{const m={};safeJobs.forEach(j=>{const s=j.source||"Other";m[s]=(m[s]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[safeJobs]);
   const maxSrc=sources.length?sources[0][1]:1;
   const recent=useMemo(()=>[...safeJobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5),[safeJobs]);
@@ -1258,12 +1290,59 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
           <div style=${{fontSize:8,fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:"var(--t3)",marginTop:1}}>Goal</div>
         <//>
       </div>
+      <!-- Weekly breakdown: revenue → direct costs → gross profit -->
       <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,padding:"14px 0 6px",borderTop:"1px solid var(--border)"}}>
-        <div style=${{textAlign:"center"}}><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:"var(--green)",letterSpacing:"-1px"}}>${money(totals.net)}</div><div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Take-Home</div></div>
-        <div style=${{textAlign:"center"}}><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:"var(--t1)",letterSpacing:"-1px"}}>${money(fixed)}</div><div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Fixed/Wk</div></div>
-        <div style=${{textAlign:"center"}}><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:"var(--blue)",letterSpacing:"-1px"}}>${typeof jobsNeeded==="number"?jobsNeeded:"—"}</div><div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Jobs Left</div></div>
+        <div style=${{textAlign:"center"}}><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:"var(--t1)",letterSpacing:"-1px"}}>${money(totals.revenue)}</div><div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Revenue</div></div>
+        <div style=${{textAlign:"center"}}><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:"var(--red)",letterSpacing:"-1px"}}>${money(totals.directCosts)}</div><div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Direct Costs</div></div>
+        <div style=${{textAlign:"center"}}><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:17,fontWeight:700,color:"var(--blue)",letterSpacing:"-1px"}}>${typeof jobsNeeded==="number"?jobsNeeded:"—"}</div><div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:3}}>Jobs to Goal</div></div>
       </div>
       ${goalPct>=100&&html`<div style=${{textAlign:"center",marginTop:12,animation:"scaleIn .4s ease"}}><span style=${{background:"var(--green-dim)",color:"var(--green)",padding:"6px 16px",borderRadius:999,fontSize:12,fontWeight:800,border:"1px solid rgba(34,197,94,.25)"}}>🎯 Weekly Goal Achieved!</span></div>`}
+    </div>
+
+    <!-- ── MONTHLY BREAKDOWN ──────────────────────────────────────── -->
+    <div class="card card-anim" style=${{marginBottom:16,overflow:"hidden"}}>
+      <div style=${{padding:"12px 16px",background:"var(--s2)",borderBottom:"1px solid var(--border2)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style=${{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"1.4px",color:"var(--blue)"}}>This Month</div>
+          <div style=${{fontSize:13,color:"var(--t1)",fontWeight:700,marginTop:2}}>${monthLabel(thisMonth)}</div>
+        </div>
+        <div style=${{textAlign:"right"}}>
+          <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:18,fontWeight:800,color:monthly.net>=0?"var(--green)":"var(--red)",letterSpacing:"-.5px"}}>${money(monthly.net)}</div>
+          <div style=${{fontSize:9,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginTop:2}}>Net Profit</div>
+        </div>
+      </div>
+      <div style=${{padding:"12px 16px"}}>
+        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,fontSize:13}}>
+          <div style=${{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border2)"}}>
+            <span style=${{color:"var(--t3)"}}>Revenue</span>
+            <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:"var(--t1)"}}>${money(monthly.revenue)}</span>
+          </div>
+          <div style=${{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border2)"}}>
+            <span style=${{color:"var(--t3)"}}>Jobs</span>
+            <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:"var(--t1)"}}>${monthJobs.length}</span>
+          </div>
+          <div style=${{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border2)"}}>
+            <span style=${{color:"var(--t3)"}}>Tire Cost</span>
+            <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:"var(--red)"}}>−${money(monthly.tireCosts)}</span>
+          </div>
+          <div style=${{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border2)"}}>
+            <span style=${{color:"var(--t3)"}}>Misc</span>
+            <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:"var(--red)"}}>−${money(monthly.miscCosts)}</span>
+          </div>
+          <div style=${{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border2)"}}>
+            <span style=${{color:"var(--t3)"}}>Travel</span>
+            <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:"var(--red)"}}>−${money(monthly.travelCosts)}</span>
+          </div>
+          <div style=${{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid var(--border2)"}}>
+            <span style=${{color:"var(--t3)"}}>Fixed</span>
+            <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,color:"var(--red)"}}>−${money(monthly.fixed)}</span>
+          </div>
+        </div>
+        <div style=${{display:"flex",justifyContent:"space-between",padding:"10px 0 2px",marginTop:6,borderTop:"1px solid var(--border)"}}>
+          <span style=${{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",color:"var(--t3)"}}>Gross Profit</span>
+          <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:800,fontSize:14,color:monthly.grossProfit>=0?"var(--t1)":"var(--red)"}}>${money(monthly.grossProfit)}</span>
+        </div>
+      </div>
     </div>
     <div class="card-anim" style=${{marginBottom:16}}><button class="cta-btn press-scale" onClick=${()=>setTab("add")}><span style=${{fontSize:18}}>＋</span><span>New Job</span></button></div>
     <div class="card-anim">
@@ -1369,7 +1448,23 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
       setPriceMode("suggested");if(onClearPrefill)onClearPrefill();
     }
   },[prefill,editJob]);
-  const setF=(k,v)=>{setForm(p=>({...p,[k]:v}));setError("");};
+  // setF: normal field setter PLUS auto-recalc tireCost when qty changes
+  // on an inventory-sourced job, so doubling qty correctly doubles tire cost.
+  const setF=(k,v)=>{
+    setForm(p=>{
+      const next={...p,[k]:v};
+      if (k === "qty" && next.inventoryItemId && next.tireSource === "Inventory") {
+        const safeInv = Array.isArray(inventory) ? inventory : [];
+        const item = safeInv.find(i => i.id === next.inventoryItemId);
+        if (item && Number(item.cost||0) > 0) {
+          const newQty = Math.max(1, Number(v||1));
+          next.tireCost = String(Number(item.cost) * newQty);
+        }
+      }
+      return next;
+    });
+    setError("");
+  };
   const useLastJob=()=>{if(!lastJob)return;setForm({...EMPTY_JOB(),service:lastJob.service,vehicleType:lastJob.vehicleType||"Car",area:lastJob.area,payment:lastJob.payment,source:lastJob.source||"Google",tireSize:lastJob.tireSize,tireCost:String(lastJob.tireCost||""),miscCost:String(lastJob.miscCost||""),miles:String(lastJob.miles||""),emergency:lastJob.emergency,lateNight:lastJob.lateNight,highway:lastJob.highway,weekend:lastJob.weekend});};
   const doSave=async(andAdd=false)=>{
     const rev=Number(form.revenue||0);if(!rev){setError("Enter the job price.");return;}
@@ -1584,6 +1679,69 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
         </div>`}
       </div>`}
 
+      <!-- ── SECTION 2.5: PRICING & COSTS ──────────────────────────── -->
+      <div class="form-group card-anim">
+        <div class="form-group-title">Pricing &amp; Costs</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Revenue ($)</label>
+            <input type="number" min="0" inputMode="decimal" placeholder="0.00"
+              value=${form.revenue||""}
+              onChange=${e=>setF("revenue",e.target.value)}
+              style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:18}}/>
+          </div>
+          <div class="field">
+            <label>Miles (travel)</label>
+            <input type="number" min="0" inputMode="decimal" placeholder="0"
+              value=${form.miles||""}
+              onChange=${e=>setF("miles",e.target.value)}
+              style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700}}/>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Tire Cost ($)</label>
+            <input type="number" min="0" inputMode="decimal" placeholder="0.00"
+              value=${form.tireCost||""}
+              onChange=${e=>setF("tireCost",e.target.value)}
+              style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700}}/>
+          </div>
+          <div class="field">
+            <label>Material / Misc ($)</label>
+            <input type="number" min="0" inputMode="decimal" placeholder="0.00"
+              value=${form.miscCost||""}
+              onChange=${e=>setF("miscCost",e.target.value)}
+              style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700}}/>
+          </div>
+        </div>
+
+        ${(() => {
+          const rev   = Number(form.revenue||0);
+          const tire  = Number(form.tireCost||0);
+          const misc  = Number(form.miscCost||0);
+          const trav  = r2(Number(form.miles||0) * Number(settings.costPerMile||0.65));
+          const total = r2(tire + misc + trav);
+          const profit= r2(rev - total);
+          if (rev <= 0 && total <= 0) return null;
+          const profitCls = profit >= 70 ? "var(--green)" : profit >= 40 ? "var(--amber)" : "var(--red)";
+          return html`<div style=${{marginTop:10,padding:"12px 14px",background:"var(--s2)",border:"1px solid var(--border)",borderRadius:12}}>
+            <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:6}}>
+              <span style=${{fontSize:11,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".6px"}}>Profit</span>
+              <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:800,fontSize:20,color:profitCls,letterSpacing:"-.5px"}}>${money(profit)}</span>
+            </div>
+            <div style=${{fontSize:11,color:"var(--t3)",fontFamily:'"IBM Plex Mono",monospace',lineHeight:1.5}}>
+              Revenue ${money(rev)}
+              ${tire>0 ? " − Tire "+money(tire) : ""}
+              ${misc>0 ? " − Misc "+money(misc) : ""}
+              ${trav>0 ? " − Travel "+money(trav) : ""}
+            </div>
+            ${tire===0 && /replacement|installation/i.test(form.service||"") && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:6,fontWeight:600}}>⚠ Tire cost is $0 — check before saving</div>`}
+          </div>`;
+        })()}
+      </div>
+
       <!-- ── SECTION 3: PAYMENT & CUSTOMER ──────────────────────────── -->
       <div class="form-group card-anim">
         <div class="form-group-title">Payment &amp; Customer</div>
@@ -1638,6 +1796,7 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
           ${!job.inventoryDeducted && job.tireSource==="Bought for this job" && /replacement|installation/i.test(job.service||"") && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>🛒 Bought${job.tireVendor?" · "+job.tireVendor:""}${[job.tireBrand,job.tireModel].filter(s=>(s||"").trim()).length?" · "+[job.tireBrand,job.tireModel].filter(s=>(s||"").trim()).join(" "):""}</div>`}
           ${!job.inventoryDeducted && job.tireSource==="Customer supplied" && /replacement|installation/i.test(job.service||"") && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>👤 Customer supplied tire</div>`}
           ${short>0 && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:1,fontWeight:600}}>⚠ Short: ${short} tire${short===1?"":"s"}</div>`}
+          ${Number(job.tireCost||0)===0 && (job.tireSource==="Bought for this job") && /replacement|installation/i.test(job.service||"") && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:1,fontWeight:600}}>⚠ Check tire cost</div>`}
           <div style=${{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}><span class=${"pill "+profitCls}>${money(profit)}</span>${job.status==="Pending"&&html`<span class="pill gold">Pending</span>`}</div>
         </div>
         <div style=${{textAlign:"right",flexShrink:0}}>
@@ -1672,7 +1831,17 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
       ?html`<${EmptyState} icon="📋" title="No jobs found" sub=${search?"Try a different search.":"No jobs match this filter."}/>`
       :view==="weeks"
         ?html`<div>${weekGroups.map(([wk,wkJobs])=>{const t=weekSummary(wkJobs,settings);return html`<div key=${wk} style=${{marginBottom:20}}>
-            <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0"}}><div><div style=${{fontWeight:700,fontSize:13}}>${weekLabel(wk)}</div><div class="sub">${wkJobs.length} jobs · ${money(t.revenue)} rev</div></div><div class=${"value "+(t.net>=0?"green":"red")}>${money(t.net)}</div></div>
+            <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",gap:10}}>
+              <div style=${{flex:1,minWidth:0}}>
+                <div style=${{fontWeight:700,fontSize:13}}>${weekLabel(wk)}</div>
+                <div class="sub">${wkJobs.length} jobs · ${money(t.revenue)} rev · ${money(t.directCosts)} costs</div>
+              </div>
+              <div style=${{textAlign:"right",flexShrink:0}}>
+                <div class=${"value "+(t.grossProfit>=0?"green":"red")} style=${{fontSize:16,fontFamily:'"IBM Plex Mono",monospace',fontWeight:800}}>${money(t.grossProfit)}</div>
+                <div style=${{fontSize:10,color:"var(--t3)",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginTop:1}}>gross profit</div>
+                ${t.fixed>0 && html`<div style=${{fontSize:10,color:t.net>=0?"var(--t3)":"var(--red)",marginTop:3,fontFamily:'"IBM Plex Mono",monospace'}}>net ${money(t.net)} <span style=${{color:"var(--t3)"}}>(−${money(t.fixed)} fixed)</span></div>`}
+              </div>
+            </div>
             <div class="stack">${wkJobs.map(job=>html`<${JobRow} key=${job.id} job=${job}/>`)}</div>
           </div>`;})}</div>`
         :html`<div class="stack">${filtered.map(job=>html`<${JobRow} key=${job.id} job=${job}/>`)}</div>`}
@@ -1680,8 +1849,9 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
 }
 
 // ── Expenses ──────────────────────────────────────────────────────────────────
-function Expenses({expenses,setExpenses}) {
+function Expenses({expenses,setExpenses,jobs}) {
   const safe=Array.isArray(expenses)?expenses:[];
+  const safeJobs=Array.isArray(jobs)?jobs:[];
   const [form,setForm]=useState({date:TODAY(),category:"Fuel",amount:"",note:""});
   const CATS=["Fuel","Oil/Fluids","Equipment Repair","Supplies","Food","Tolls/Parking","Other"];
   const setF=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1690,8 +1860,59 @@ function Expenses({expenses,setExpenses}) {
   const total=safe.reduce((s,e)=>s+Number(e.amount||0),0);
   const thisWeek=getWeekStart(TODAY());
   const weekTotal=safe.filter(e=>getWeekStart(e.date||TODAY())===thisWeek).reduce((s,e)=>s+Number(e.amount||0),0);
+
+  // ── Material cost aggregation from jobs ─────────────────────────────────
+  // Pulls tireCost + miscCost directly from each job. No manual entry needed.
+  const matCost = useMemo(() => {
+    const out = { weekTire:0, weekMisc:0, weekTotal:0, allTire:0, allMisc:0, allTotal:0, weekJobs:[] };
+    safeJobs.forEach(j => {
+      const tire = Number(j.tireCost||0);
+      const misc = Number(j.miscCost||0);
+      if (tire === 0 && misc === 0) return;
+      out.allTire  += tire;
+      out.allMisc  += misc;
+      out.allTotal += tire + misc;
+      if (getWeekStart(j.date||TODAY()) === thisWeek) {
+        out.weekTire  += tire;
+        out.weekMisc  += misc;
+        out.weekTotal += tire + misc;
+        out.weekJobs.push(j);
+      }
+    });
+    return out;
+  }, [safeJobs, thisWeek]);
+
   return html`<div class="screen"><div class="page page-enter">
-    <div class="section-label" style=${{marginTop:0}}>Variable Expenses</div>
+
+    <!-- ── Material Costs (auto from jobs) ─────────────────────────── -->
+    <div class="section-label" style=${{marginTop:0}}>Material Costs (from jobs)</div>
+    <div class="mini-grid card-anim" style=${{marginBottom:14}}>
+      <div class="mini-box"><strong>${money(matCost.weekTire)}</strong><span>Week · Tires</span></div>
+      <div class="mini-box"><strong>${money(matCost.weekMisc)}</strong><span>Week · Misc</span></div>
+      <div class="mini-box"><strong style=${{color:matCost.weekTotal>0?"var(--orange)":"var(--t1)"}}>${money(matCost.weekTotal)}</strong><span>Week · Total</span></div>
+      <div class="mini-box"><strong>${money(matCost.allTotal)}</strong><span>All Time</span></div>
+    </div>
+    ${matCost.weekJobs.length > 0 && html`<div class="card card-anim" style=${{marginBottom:14,overflow:"hidden"}}>
+      <div style=${{padding:"10px 16px",background:"var(--s2)",borderBottom:"1px solid var(--border2)",fontSize:10,fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"var(--t3)"}}>
+        This Week · ${matCost.weekJobs.length} job${matCost.weekJobs.length===1?"":"s"}
+      </div>
+      ${[...matCost.weekJobs].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map((j,idx,arr)=>{
+        const tire=Number(j.tireCost||0), misc=Number(j.miscCost||0);
+        const subParts=[];
+        if(tire>0) subParts.push("Tire "+money(tire));
+        if(misc>0) subParts.push("Misc "+money(misc));
+        return html`<div key=${j.id||idx} style=${{padding:"11px 16px",borderBottom:idx<arr.length-1?"1px solid var(--border2)":"none",display:"flex",alignItems:"center",gap:12}}>
+          <div style=${{flex:1,minWidth:0}}>
+            <div style=${{fontSize:13,fontWeight:600,color:"var(--t1)"}}>${j.service||"Job"}${j.tireSize?" · "+j.tireSize:""}</div>
+            <div style=${{fontSize:11,color:"var(--t3)",marginTop:2,fontFamily:'"IBM Plex Mono",monospace'}}>${j.date||""} · ${subParts.join(" + ")}</div>
+          </div>
+          <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:14,color:"var(--orange)",flexShrink:0}}>${money(tire+misc)}</div>
+        </div>`;
+      })}
+    </div>`}
+
+    <!-- ── Variable Expenses (manual) ─────────────────────────────── -->
+    <div class="section-label">Variable Expenses</div>
     <div class="mini-grid card-anim">
       <div class="mini-box"><strong>${money(weekTotal)}</strong><span>This Week</span></div>
       <div class="mini-box"><strong>${money(total)}</strong><span>All Time</span></div>
@@ -1721,26 +1942,61 @@ function Expenses({expenses,setExpenses}) {
 function Payouts({jobs,settings}) {
   const safeJobs=Array.isArray(jobs)?jobs:[];
   const weeks=useMemo(()=>groupByWeek(safeJobs),[safeJobs]);
+  const months=useMemo(()=>groupByMonth(safeJobs),[safeJobs]);
   if(!weeks.length)return html`<div class="screen"><div class="page page-enter"><${EmptyState} icon="💰" title="No payout history" sub="Log jobs to see weekly payout breakdowns."/></div></div>`;
+  const [mode,setMode]=useState("weekly"); // 'weekly' | 'monthly'
+  const ao1=settings.owner1Active!==false,ao2=settings.owner2Active!==false;
+  const splitBase=(ao1?Number(settings.profitSplit1||50):0)+(ao2?Number(settings.profitSplit2||50):0)||100;
   return html`<div class="screen"><div class="page page-enter">
-    <div class="section-label" style=${{marginTop:0}}>Weekly Payouts</div>
-    ${weeks.map(([wk,wkJobs])=>{
-      const t=weekSummary(wkJobs,settings);
-      const ao1=settings.owner1Active!==false,ao2=settings.owner2Active!==false;
-      const st=(ao1?Number(settings.profitSplit1||50):0)+(ao2?Number(settings.profitSplit2||50):0)||100;
-      const o1=t.net>0&&ao1?r2(t.net*(Number(settings.profitSplit1||50)/st)):0;
-      const o2=t.net>0&&ao2?r2(t.net*(Number(settings.profitSplit2||50)/st)):0;
-      const tax=t.net>0&&settings.taxRate>0?r2(t.net*(Number(settings.taxRate)/100)):0;
-      return html`<div class="card card-anim" key=${wk} style=${{marginBottom:14}}>
-        <div class="card-pad"><div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style=${{fontWeight:700,fontSize:14}}>${weekLabel(wk)}</div><div class="sub">${wkJobs.length} jobs</div></div><div class=${"value big "+(t.net>=0?"green":"red")}>${money(t.net)}</div></div></div>
-        <div class="card-row"><div class="label">Revenue</div><div class="value">${money(t.revenue)}</div></div>
-        <div class="card-row"><div class="label">Direct Costs</div><div class="value red">${money(t.directCosts)}</div></div>
-        <div class="card-row"><div class="label">Gross Profit</div><div class="value">${money(t.grossProfit)}</div></div>
-        <div class="card-row"><div class="label">Weekly Fixed</div><div class="value red">${money(t.fixed)}</div></div>
-        ${[{name:settings.owner1Name||"Owner 1",pct:settings.profitSplit1,amt:o1,active:ao1},{name:settings.owner2Name||"Owner 2",pct:settings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>html`<div key=${i} class="card-row" style=${{background:"var(--s2)",opacity:o.active?1:0.4}}><div><div class="label">${o.name}</div><div class="sub">${o.pct}% split</div></div><div class=${"value "+(o.active&&o.amt>0?"green":"")}>${o.active?money(o.amt):"—"}</div></div>`)}
-        ${tax>0&&html`<div class="card-pad"><div class="tax-box" style=${{marginTop:0}}><div class="tax-lbl">💰 Tax Reserve (${settings.taxRate}%)</div><div class="tax-amt">${money(tax)}</div><div class="tax-hint">~${money(tax/2)} per owner</div></div></div>`}
-      </div>`;
-    })}
+    <!-- Weekly / Monthly toggle -->
+    <div style=${{display:"flex",gap:8,marginBottom:14}}>
+      <button class=${"chip sm"+(mode==="weekly"?" active":"")} onClick=${()=>setMode("weekly")}>Weekly</button>
+      <button class=${"chip sm"+(mode==="monthly"?" active":"")} onClick=${()=>setMode("monthly")}>Monthly</button>
+    </div>
+
+    ${mode==="weekly" && html`<div>
+      <div class="section-label" style=${{marginTop:0}}>Weekly Payouts</div>
+      ${weeks.map(([wk,wkJobs])=>{
+        const t=weekSummary(wkJobs,settings);
+        // Owner split on GROSS profit (no fixed overhead subtraction at week level)
+        const payBase=t.grossProfit;
+        const o1=payBase>0&&ao1?r2(payBase*(Number(settings.profitSplit1||50)/splitBase)):0;
+        const o2=payBase>0&&ao2?r2(payBase*(Number(settings.profitSplit2||50)/splitBase)):0;
+        const tax=payBase>0&&settings.taxRate>0?r2(payBase*(Number(settings.taxRate)/100)):0;
+        return html`<div class="card card-anim" key=${wk} style=${{marginBottom:14}}>
+          <div class="card-pad"><div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style=${{fontWeight:700,fontSize:14}}>${weekLabel(wk)}</div><div class="sub">${wkJobs.length} jobs</div></div><div class=${"value big "+(t.grossProfit>=0?"green":"red")}>${money(t.grossProfit)}</div></div></div>
+          <div class="card-row"><div class="label">Revenue</div><div class="value">${money(t.revenue)}</div></div>
+          <div class="card-row"><div class="label">Direct Costs</div><div class="value red">${money(t.directCosts)}</div></div>
+          <div class="card-row"><div class="label">Gross Profit</div><div class="value green">${money(t.grossProfit)}</div></div>
+          ${[{name:settings.owner1Name||"Owner 1",pct:settings.profitSplit1,amt:o1,active:ao1},{name:settings.owner2Name||"Owner 2",pct:settings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>html`<div key=${i} class="card-row" style=${{background:"var(--s2)",opacity:o.active?1:0.4}}><div><div class="label">${o.name}</div><div class="sub">${o.pct}% split</div></div><div class=${"value "+(o.active&&o.amt>0?"green":"")}>${o.active?money(o.amt):"—"}</div></div>`)}
+          ${tax>0&&html`<div class="card-pad"><div class="tax-box" style=${{marginTop:0}}><div class="tax-lbl">💰 Tax Reserve (${settings.taxRate}%)</div><div class="tax-amt">${money(tax)}</div><div class="tax-hint">~${money(tax/2)} per owner</div></div></div>`}
+        </div>`;
+      })}
+    </div>`}
+
+    ${mode==="monthly" && html`<div>
+      <div class="section-label" style=${{marginTop:0}}>Monthly Payouts</div>
+      ${months.map(([mk,mJobs])=>{
+        const t=monthSummary(mJobs,settings);
+        // Monthly payouts: split on NET (after monthly fixed overhead)
+        const payBase=t.net;
+        const o1=payBase>0&&ao1?r2(payBase*(Number(settings.profitSplit1||50)/splitBase)):0;
+        const o2=payBase>0&&ao2?r2(payBase*(Number(settings.profitSplit2||50)/splitBase)):0;
+        const tax=payBase>0&&settings.taxRate>0?r2(payBase*(Number(settings.taxRate)/100)):0;
+        return html`<div class="card card-anim" key=${mk} style=${{marginBottom:14}}>
+          <div class="card-pad"><div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style=${{fontWeight:700,fontSize:14}}>${monthLabel(mk)}</div><div class="sub">${mJobs.length} jobs</div></div><div class=${"value big "+(t.net>=0?"green":"red")}>${money(t.net)}</div></div></div>
+          <div class="card-row"><div class="label">Revenue</div><div class="value">${money(t.revenue)}</div></div>
+          <div class="card-row"><div class="label">Tire Cost</div><div class="value red">${money(t.tireCosts)}</div></div>
+          <div class="card-row"><div class="label">Misc / Materials</div><div class="value red">${money(t.miscCosts)}</div></div>
+          <div class="card-row"><div class="label">Travel</div><div class="value red">${money(t.travelCosts)}</div></div>
+          <div class="card-row"><div class="label">Gross Profit</div><div class="value">${money(t.grossProfit)}</div></div>
+          <div class="card-row"><div class="label">Monthly Overhead</div><div class="value red">−${money(t.fixed)}</div></div>
+          <div class="card-row" style=${{background:"var(--s2)"}}><div class="label" style=${{fontWeight:700}}>Net Profit</div><div class=${"value "+(t.net>=0?"green":"red")}>${money(t.net)}</div></div>
+          ${[{name:settings.owner1Name||"Owner 1",pct:settings.profitSplit1,amt:o1,active:ao1},{name:settings.owner2Name||"Owner 2",pct:settings.profitSplit2,amt:o2,active:ao2}].map((o,i)=>html`<div key=${i} class="card-row" style=${{background:"var(--s2)",opacity:o.active?1:0.4}}><div><div class="label">${o.name}</div><div class="sub">${o.pct}% split</div></div><div class=${"value "+(o.active&&o.amt>0?"green":"")}>${o.active?money(o.amt):"—"}</div></div>`)}
+          ${tax>0&&html`<div class="card-pad"><div class="tax-box" style=${{marginTop:0}}><div class="tax-lbl">💰 Tax Reserve (${settings.taxRate}%)</div><div class="tax-amt">${money(tax)}</div><div class="tax-hint">~${money(tax/2)} per owner</div></div></div>`}
+        </div>`;
+      })}
+    </div>`}
   </div></div>`;
 }
 
@@ -2473,7 +2729,7 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
     <div class="section-label">Monthly Fixed Expenses</div>
     <div class="card card-anim">
       ${exps.map(exp=>html`<div class="expense-row" key=${exp.id}><input value=${exp.name} onChange=${e=>updExp(exp.id,{name:e.target.value})}/><input type="number" value=${exp.amount} onChange=${e=>updExp(exp.id,{amount:Number(e.target.value||0)})}/><button class=${"btn sm "+(exp.active?"success":"secondary")} onClick=${()=>updExp(exp.id,{active:!exp.active})}>${exp.active?"On":"Off"}</button><button class="btn danger sm" onClick=${()=>delExp(exp.id)}>×</button></div>`)}
-      <div class="card-row"><button class="btn secondary sm press-scale" onClick=${addExp}>+ Add</button><div style=${{textAlign:"right"}}><div class="value">${money(monthly)}/mo</div><div class="sub">${money(weekly)}/wk</div></div></div>
+      <div class="card-row"><button class="btn secondary sm press-scale" onClick=${addExp}>+ Add</button><div style=${{textAlign:"right"}}><div class="value">${money(monthly)}/mo</div><div class="sub" style=${{fontSize:10,color:"var(--t3)"}}>≈ ${money(weekly)}/wk reference</div></div></div>
     </div>
     <div class="section-label">Data</div>
     <div class="card card-anim">
@@ -2884,7 +3140,7 @@ function App() {
     case "add":       content=html`<${AddJob} onSave=${saveJob} settings=${settings} jobs=${jobs} inventory=${inventory} prefill=${prefill} onClearPrefill=${()=>setPrefill(null)} editJob=${editJob} onClearEdit=${()=>setEditJob(null)} saving=${saving} onSwitchToInventory=${()=>setTab("inventory")}/>`; break;
     case "history":   content=html`<${History} jobs=${jobs} settings=${settings} onEdit=${handleEdit} onDelete=${deleteJob} onRepeat=${handleRepeat}/>`; break;
     case "payouts":   content=html`<${Payouts} jobs=${jobs} settings=${settings}/>`; break;
-    case "expenses":  content=html`<${Expenses} expenses=${expenses} setExpenses=${handleSetExpenses}/>`; break;
+    case "expenses":  content=html`<${Expenses} expenses=${expenses} setExpenses=${handleSetExpenses} jobs=${jobs}/>`; break;
     case "inventory": content=html`<${Inventory} inventory=${inventory} setInventory=${handleSetInventory} jobs=${jobs} user=${user}/>`; break;
     case "settings":  content=html`<${Settings} settings=${settings} setSettings=${setSettings} jobs=${jobs} setJobs=${setJobs} inventory=${inventory} setInventory=${handleSetInventory} expenses=${expenses} setExpenses=${handleSetExpenses} onResetInventory=${resetInventoryFb}/>`; break;
     default: content=null;
