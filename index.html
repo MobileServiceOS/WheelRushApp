@@ -524,24 +524,35 @@ function normalizeTireSize(s) {
 
 // ── Build deduction plan against current inventory (pure, no writes) ──────────
 // New tires consumed before used. Higher-qty rows consumed first within a condition.
-function planInventoryDeduction(inventory, tireSize, qtyNeeded) {
+function planInventoryDeduction(inventory, tireSize, qtyNeeded, preferredId) {
   const targetSize = normalizeTireSize(tireSize);
   if (!targetSize || !qtyNeeded || qtyNeeded <= 0) return null;
 
-  const matches = (inventory || [])
-    .filter(i => normalizeTireSize(i.size) === targetSize && (Number(i.qty) || 0) > 0)
-    .sort((a, b) => {
-      const ac = (String(a.condition||"new").toLowerCase() === "new") ? 0 : 1;
-      const bc = (String(b.condition||"new").toLowerCase() === "new") ? 0 : 1;
-      if (ac !== bc) return ac - bc;
-      return (Number(b.qty) || 0) - (Number(a.qty) || 0);
-    });
+  const candidates = (inventory || [])
+    .filter(i => normalizeTireSize(i.size) === targetSize && (Number(i.qty) || 0) > 0);
 
-  if (matches.length === 0) return null;
+  if (candidates.length === 0) return null;
+
+  // If a specific inventory row was selected, take from it FIRST.
+  // Fall back to size-matched FIFO (New before Used, higher qty first) for any remainder.
+  const sorted = candidates.slice().sort((a, b) => {
+    const ac = (String(a.condition||"new").toLowerCase() === "new") ? 0 : 1;
+    const bc = (String(b.condition||"new").toLowerCase() === "new") ? 0 : 1;
+    if (ac !== bc) return ac - bc;
+    return (Number(b.qty) || 0) - (Number(a.qty) || 0);
+  });
+
+  // Promote preferredId row to the head, if it's a valid match.
+  const ordered = preferredId
+    ? [
+        ...sorted.filter(r => String(r.id) === String(preferredId)),
+        ...sorted.filter(r => String(r.id) !== String(preferredId)),
+      ]
+    : sorted;
 
   const plan = [];
   let remaining = qtyNeeded;
-  for (const row of matches) {
+  for (const row of ordered) {
     if (remaining <= 0) break;
     const have = Number(row.qty) || 0;
     const take = Math.min(have, remaining);
@@ -716,6 +727,9 @@ const jobDirectCost  = (j,s) => r2(Number(j.miles||0)*Number(s.costPerMile||0.65
 const jobGrossProfit = (j,s) => r2(Number(j.revenue||0)-jobDirectCost(j,s));
 const weeklyFixed    = s => { const exps=Array.isArray(s.expenses)?s.expenses:[]; return r2(exps.filter(e=>e.active).reduce((t,e)=>t+Number(e.amount||0),0)*12/52); };
 const monthlyFixed   = s => { const exps=Array.isArray(s.expenses)?s.expenses:[]; return exps.filter(e=>e.active).reduce((t,e)=>t+Number(e.amount||0),0); };
+// Single source of truth for "does this service use tires/materials that should be tracked?"
+// Used by validation, deduction gating, and UI visibility of the Tire Source section.
+const isTireMaterialService = svc => /replacement|installation/i.test(String(svc||""));
 function premiums(j) {
   let p = 0;
   if (j.emergency) p+=20; if (j.lateNight) p+=20;
@@ -906,7 +920,7 @@ function generateInvoicePDF(job,settings) {
   let y=54;
 
   // ── Bill To ────────────────────────────────────────────────────────────────
-  const custName = (job.customerName||"").trim() || "Service Customer";
+  const custName = (job.customerName||"").trim() || "Roadside Customer";
   doc.setFont("helvetica","bold"); doc.setFontSize(7); doc.setTextColor(...ORANGE);
   doc.text("BILL TO",M,y);
   doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(...NEAR_BLK);
@@ -957,10 +971,11 @@ function generateInvoicePDF(job,settings) {
   y+=15;
 
   // ── Service line item ─────────────────────────────────────────────────────
+  // Plain-text only (no emoji — jsPDF Helvetica can't render them and shows garbled glyphs).
   const svcLabel = (job.service||"Tire Service")+" (Mobile Service)";
-  const meta1 = job.area       ? "📍 "+job.area                        : null;
-  const meta2 = job.tireSize   ? "🛞  Tire Size: "+job.tireSize         : null;
-  const meta3 =                  "🚗  Quantity: "+String(Number(job.qty||1));
+  const meta1 = job.area       ? "Location: "+job.area                  : null;
+  const meta2 = job.tireSize   ? "Tire Size: "+job.tireSize             : null;
+  const meta3 =                  "Quantity: "+String(Number(job.qty||1));
   const metas = [meta1,meta2,meta3].filter(Boolean);
   const rowH  = 14 + metas.length*6;
 
@@ -978,24 +993,27 @@ function generateInvoicePDF(job,settings) {
   doc.text(money(Number(job.revenue||0)),W-M-2,y+3,{align:"right"});
   y+=rowH+4;
 
-  // ── Notes ─────────────────────────────────────────────────────────────────
-  if ((job.note||"").trim()) {
+  // ── Notes (only if explicitly marked customer-safe with [C] prefix) ───────
+  // Otherwise internal notes stay internal.
+  const rawNote = String(job.note||"").trim();
+  const isCustomerSafe = /^\[c\]/i.test(rawNote);
+  if (isCustomerSafe) {
+    const cleanNote = rawNote.replace(/^\[c\]\s*/i,"");
     doc.setFont("helvetica","italic"); doc.setFontSize(9); doc.setTextColor(...GRAY);
-    const nl=doc.splitTextToSize("Note: "+job.note, W-M*2-10);
+    const nl=doc.splitTextToSize("Note: "+cleanNote, W-M*2-10);
     doc.text(nl,M+4,y); y+=nl.length*5+6;
   }
 
-  // ── Price breakdown ────────────────────────────────────────────────────────
+  // ── Customer-facing summary (NO internal cost breakdown) ─────────────────
+  // We do NOT show tire cost, material cost, or any internal cost split.
+  // Only the customer-relevant service components.
   doc.setDrawColor(...LGRAY); doc.setLineWidth(0.2); doc.line(M,y,W-M,y); y+=8;
   const rev = Number(job.revenue||0);
-  const tc  = Number(job.tireCost||0);
-  const svcFee = tc>0 ? rev-tc : rev;
-  const breakdownRows = [
-    ["Service Fee",  money(Math.max(0,svcFee))],
-    ["Tire Cost",    tc>0?money(tc):"Included"],
-    ["Mobile Convenience","Included"],
+  const summaryRows = [
+    [(job.service||"Tire Service"),          money(rev)],
+    ["On-Site Mobile Service Included",      "—"],
   ];
-  breakdownRows.forEach(([lbl,val]) => {
+  summaryRows.forEach(([lbl,val]) => {
     doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(...GRAY);
     doc.text(lbl,M+4,y);
     doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(...NAVY);
@@ -1017,17 +1035,19 @@ function generateInvoicePDF(job,settings) {
 
   // ── Trust line ────────────────────────────────────────────────────────────
   doc.setFont("helvetica","italic"); doc.setFontSize(8.5); doc.setTextColor(...GRAY);
-  doc.text("On-site service completed. No towing required.",M,y,{align:"left"});
+  doc.text("On-site mobile service completed. No tow required.",M,y,{align:"left"});
   y+=12;
 
   // ── Footer ────────────────────────────────────────────────────────────────
-  const fy=275;
-  doc.setFillColor(...NAVY);  doc.rect(0,fy,W,22,"F");
+  const fy=269;
+  doc.setFillColor(...NAVY);   doc.rect(0,fy,W,28,"F");
   doc.setFillColor(...ORANGE); doc.rect(0,fy,W,2,"F");
   doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...WHITE);
-  doc.text("Thank you for choosing Wheel Rush — Mobile Tire Service You Can Trust",W/2,fy+10,{align:"center"});
+  doc.text("Thank you for choosing Wheel Rush — Mobile Tire Service You Can Trust",W/2,fy+9,{align:"center"});
   doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(175,200,225);
-  doc.text("305-897-7030  ·  Miami, FL  ·  wheelrush.com",W/2,fy+17,{align:"center"});
+  doc.text("305-897-7030  ·  Miami, FL  ·  wheelrush.com",W/2,fy+16,{align:"center"});
+  doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...ORANGE);
+  doc.text("Available 24/7 for roadside tire service",W/2,fy+23,{align:"center"});
 
   return doc;
 }
@@ -1474,7 +1494,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
 
     // Inventory feedback (fires on new + edited tire jobs)
     setInvFeedback(null);
-    if(result && entry.tireSize && /replacement|installation/i.test(entry.service||"")){
+    if(result && entry.tireSize && isTireMaterialService(entry.service)){
       const qtyNeeded=Math.max(1,Number(entry.qty||1));
       const sizeNorm=result.sizeNormalized||normalizeTireSize(entry.tireSize);
       const short=Number(result.shortfall||0);
@@ -1560,7 +1580,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
         <div class="field"><label>Tire Size</label><input value=${form.tireSize} onChange=${e=>setF("tireSize",e.target.value)} placeholder="225/55R17"/><div class="chip-row" style=${{marginTop:8}}>${recentSizes.map(sz=>html`<button type="button" key=${sz} class=${"chip sm"+(form.tireSize===sz?" active":"")} onClick=${()=>setF("tireSize",sz)}>${sz}</button>`)}</div></div>
       </div>
 
-      ${/replacement|installation/i.test(form.service||"") && html`<div class="form-group card-anim">
+      ${isTireMaterialService(form.service) && html`<div class="form-group card-anim">
         <div class="form-group-title">Tire Source</div>
         <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
           ${[
@@ -1737,7 +1757,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
               ${misc>0 ? " − Misc "+money(misc) : ""}
               ${trav>0 ? " − Travel "+money(trav) : ""}
             </div>
-            ${tire===0 && /replacement|installation/i.test(form.service||"") && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:6,fontWeight:600}}>⚠ Tire cost is $0 — check before saving</div>`}
+            ${tire===0 && isTireMaterialService(form.service) && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:6,fontWeight:600}}>⚠ Tire cost is $0 — check before saving</div>`}
           </div>`;
         })()}
       </div>
@@ -1769,7 +1789,7 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
   const filtered=useMemo(()=>{
     let j=safeJobs;
     if(filter==="Repair")j=j.filter(x=>/repair/i.test(x.service));
-    else if(filter==="Replacement")j=j.filter(x=>/replacement|installation/i.test(x.service));
+    else if(filter==="Replacement")j=j.filter(x=>isTireMaterialService(x.service));
     else if(filter==="Pending")j=j.filter(x=>x.status==="Pending");
     else if(filter!=="All")j=j.filter(x=>x.area===filter);
     if(search.trim()){const q=search.toLowerCase();j=j.filter(x=>(x.customerName||"").toLowerCase().includes(q)||(x.customerPhone||"").includes(q)||(x.tireSize||"").toLowerCase().includes(q)||(x.area||"").toLowerCase().includes(q)||(x.note||"").toLowerCase().includes(q));}
@@ -1793,10 +1813,10 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
           <div class="job-meta">${job.area||"Miami"} · ${job.date||""}${job.tireSize?" · "+job.tireSize:""}</div>
           ${(job.customerName||job.customerPhone)&&html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>👤 ${job.customerName||""}${job.customerPhone?" · "+job.customerPhone:""}</div>`}
           ${job.inventoryDeducted && invUsed && invUsed.size && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>📦 From stock: ${invUsed.size}${invUsed.qty?" ×"+invUsed.qty:""}</div>`}
-          ${!job.inventoryDeducted && job.tireSource==="Bought for this job" && /replacement|installation/i.test(job.service||"") && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>🛒 Bought${job.tireVendor?" · "+job.tireVendor:""}${[job.tireBrand,job.tireModel].filter(s=>(s||"").trim()).length?" · "+[job.tireBrand,job.tireModel].filter(s=>(s||"").trim()).join(" "):""}</div>`}
-          ${!job.inventoryDeducted && job.tireSource==="Customer supplied" && /replacement|installation/i.test(job.service||"") && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>👤 Customer supplied tire</div>`}
+          ${!job.inventoryDeducted && job.tireSource==="Bought for this job" && isTireMaterialService(job.service) && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>🛒 Bought${job.tireVendor?" · "+job.tireVendor:""}${[job.tireBrand,job.tireModel].filter(s=>(s||"").trim()).length?" · "+[job.tireBrand,job.tireModel].filter(s=>(s||"").trim()).join(" "):""}</div>`}
+          ${!job.inventoryDeducted && job.tireSource==="Customer supplied" && isTireMaterialService(job.service) && html`<div style=${{fontSize:11,color:"var(--t3)",marginTop:1}}>👤 Customer supplied tire</div>`}
           ${short>0 && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:1,fontWeight:600}}>⚠ Short: ${short} tire${short===1?"":"s"}</div>`}
-          ${Number(job.tireCost||0)===0 && (job.tireSource==="Bought for this job") && /replacement|installation/i.test(job.service||"") && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:1,fontWeight:600}}>⚠ Check tire cost</div>`}
+          ${Number(job.tireCost||0)===0 && (job.tireSource==="Bought for this job") && isTireMaterialService(job.service) && html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:1,fontWeight:600}}>⚠ Check tire cost</div>`}
           <div style=${{marginTop:7,display:"flex",gap:6,flexWrap:"wrap"}}><span class=${"pill "+profitCls}>${money(profit)}</span>${job.status==="Pending"&&html`<span class="pill gold">Pending</span>`}</div>
         </div>
         <div style=${{textAlign:"right",flexShrink:0}}>
@@ -2084,14 +2104,11 @@ function Inventory({inventory, setInventory, jobs, user}) {
     };
 
     // add to inventory (top of list → shows immediately)
+    // Parent's handleSetInventory handles both localStorage persistence and Firebase sync.
     setInventory(function(existing) {
       const arr  = Array.isArray(existing) ? existing : [];
-      const next = [item, ...arr];
-      persist(KEYS.inventory, next);
-      return next;
+      return [item, ...arr];
     });
-    // firebase sync (fire-and-forget)
-    setTimeout(function(){ fbWriteItem(item); }, 0);
 
     // reset form + return to stock screen
     setNt(EMPTY_NEW);
@@ -2101,33 +2118,27 @@ function Inventory({inventory, setInventory, jobs, user}) {
   }
 
   // ── existing-row functions ────────────────────────────────────────────────
+  // Persistence + Firebase sync handled by handleSetInventory in App (parent).
+  // Do NOT manually persist() or fbWriteItem() here — that creates duplicate writes.
   function patchExisting(id, patch) {
     setInventory(function(prev) {
       const arr  = Array.isArray(prev) ? prev : [];
-      const next = arr.map(function(i) {
+      return arr.map(function(i) {
         if (i.id !== id) return i;
         const cur = sanitizeInvItem(i);
         return sanitizeInvItem({...cur, ...patch, id: cur.id});
       });
-      persist(KEYS.inventory, next);
-      const changed = next.find(function(i){ return i.id === id; });
-      if (changed) setTimeout(function(){ fbWriteItem(changed); }, 0);
-      return next;
     });
   }
 
   function stepExisting(id, delta) {
     setInventory(function(prev) {
       const arr  = Array.isArray(prev) ? prev : [];
-      const next = arr.map(function(i) {
+      return arr.map(function(i) {
         if (i.id !== id) return i;
         const cur = sanitizeInvItem(i);
         return sanitizeInvItem({...cur, qty: Math.max(0, cur.qty + delta)});
       });
-      persist(KEYS.inventory, next);
-      const changed = next.find(function(i){ return i.id === id; });
-      if (changed) setTimeout(function(){ fbWriteItem(changed); }, 0);
-      return next;
     });
   }
 
@@ -2135,10 +2146,7 @@ function Inventory({inventory, setInventory, jobs, user}) {
     if (!window.confirm('Remove this tire?')) return;
     setInventory(function(prev) {
       const arr  = Array.isArray(prev) ? prev : [];
-      const next = arr.filter(function(i){ return i.id !== id; });
-      persist(KEYS.inventory, next);
-      setTimeout(function(){ if (_db && !isLocalUser(user)) fbDel(invCol(), id); }, 0);
-      return next;
+      return arr.filter(function(i){ return i.id !== id; });
     });
     setEditId(function(cur){ return cur === id ? null : cur; });
     try { if (window.toast) window.toast("Tire removed", "info"); } catch(e){}
@@ -2901,7 +2909,7 @@ function App() {
       if(full.area){const ct=load(KEYS.cities,[]);persist(KEYS.cities,[full.area,...ct.filter(c=>c!==full.area)].slice(0,12));}
 
       // ── Inventory deduction (runs for both new + edit) ─────────────────
-      const isTireJob = full.service === "Tire Replacement" || /replacement|installation/i.test(full.service||"");
+      const isTireJob = isTireMaterialService(full.service);
       const qtyNeeded = Math.max(0, Number(full.qty||0));
       const tireSource = full.tireSource || "Inventory";
       const sourceAllowsDeduct = tireSource === "Inventory";
@@ -2939,7 +2947,7 @@ function App() {
       let plan = null;
       if (needsDeduct) {
         sizeNormalized = normalizeTireSize(full.tireSize);
-        plan = planInventoryDeduction(workingInv, full.tireSize, qtyNeeded);
+        plan = planInventoryDeduction(workingInv, full.tireSize, qtyNeeded, full.inventoryItemId);
         if (plan) foundAny = true;
 
         // NON-BLOCKING: if no plan (no matching size at all), synthesize a shortfall-only record
@@ -3088,7 +3096,13 @@ function App() {
       const raw=typeof updater==="function"?updater(prevArr):updater;
       const next=Array.isArray(raw)?raw:prevArr;
       persist(KEYS.inventory,next);
-      if(user && !isLocalUser(user) && invCol()) next.filter(x=>(x.size||"").trim()).forEach(x=>fbSet(invCol(),x.id,invPayload(x)));
+      if(user && !isLocalUser(user) && invCol()) {
+        // Writes: all current rows with a size
+        next.filter(x=>(x.size||"").trim()).forEach(x=>fbSet(invCol(),x.id,invPayload(x)));
+        // Deletes: rows that existed before but are no longer present
+        const nextIds=new Set(next.map(x=>String(x.id)));
+        prevArr.forEach(x=>{ if(!nextIds.has(String(x.id))) fbDel(invCol(), x.id); });
+      }
       return next;
     });
   },[user]);
