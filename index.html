@@ -1432,6 +1432,29 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
   const top5Tires=useMemo(()=>{const counts={};safeJobs.forEach(j=>{if(j.tireSize){counts[j.tireSize]=(counts[j.tireSize]||0)+Number(j.qty||1);}});return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([size,sold],i)=>({id:"bs"+i,size,sold}));},[safeJobs]);
   const pendingJobs=useMemo(()=>safeJobs.filter(j=>j.status==="Pending"),[safeJobs]);
   const pendingTotal=pendingJobs.reduce((s,j)=>s+Number(j.revenue||0),0);
+
+  // Low-stock alert: top-selling sizes that are at zero or critically low in inventory.
+  // Surfaces "you're about to lose a sale" sizes on Home so you can order before the next call.
+  const lowStock = useMemo(() => {
+    const inv = Array.isArray(inventory) ? inventory : [];
+    const byNormSize = {};
+    inv.forEach(i => {
+      const n = normalizeTireSize(i.size);
+      if (!n) return;
+      byNormSize[n] = (byNormSize[n] || 0) + Number(i.qty || 0);
+    });
+    const alerts = [];
+    top5Tires.forEach(t => {
+      const n = normalizeTireSize(t.size);
+      if (!n) return;
+      const onHand = byNormSize[n] || 0;
+      if (onHand <= 1) {
+        alerts.push({ size: t.size, onHand, soldCount: t.sold });
+      }
+    });
+    return alerts.slice(0, 3); // top-3 critical
+  }, [top5Tires, inventory]);
+
   const lastWeekStart=useMemo(()=>{const d=new Date(thisWeek+"T12:00:00");d.setDate(d.getDate()-7);return d.toLocaleDateString("en-CA",{timeZone:"America/New_York"});},[thisWeek]);
   const lastWeekJobs=useMemo(()=>safeJobs.filter(j=>getWeekStart(j.date)===lastWeekStart),[safeJobs,lastWeekStart]);
   const lastWeekGross=lastWeekJobs.reduce((s,j)=>s+jobGrossProfit(j,settings),0);
@@ -1502,6 +1525,17 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
       <div><div class="pending-banner-title">⏳ ${pendingJobs.length} Pending</div><div class="pending-banner-sub">${money(pendingTotal)} to collect</div></div>
       <span style=${{fontSize:12,fontWeight:700,color:"var(--gold)"}}>Collect →</span>
     </div>`}
+
+    ${lowStock.length>0 && html`<div class="card-anim press-scale" style=${{cursor:"pointer",background:"linear-gradient(135deg,rgba(220,38,38,.12),rgba(220,38,38,.04))",border:"1px solid rgba(220,38,38,.3)",borderRadius:"var(--r2)",padding:"12px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}} onClick=${()=>setTab("inventory")}>
+      <div style=${{flex:1,minWidth:0}}>
+        <div style=${{fontSize:11,fontWeight:800,color:"#ef4444",textTransform:"uppercase",letterSpacing:".8px"}}>⚠ Low Stock — Top Sellers</div>
+        <div style=${{fontSize:11,color:"var(--t2)",marginTop:3,fontFamily:'"IBM Plex Mono",monospace'}}>
+          ${lowStock.map(a => a.size + " (" + (a.onHand===0?"out":a.onHand) + ")").join(" · ")}
+        </div>
+      </div>
+      <span style=${{fontSize:12,fontWeight:700,color:"#ef4444",flexShrink:0}}>Order →</span>
+    </div>`}
+
     <div class="card card-anim"><div class="card-pad">
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div><div class="kpi-label">Weekly Target</div><div style=${{display:"flex",alignItems:"baseline",gap:6,marginTop:4}}><span style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:20,fontWeight:700,color:"var(--t1)",letterSpacing:"-1px"}}>${money(totals.grossProfit)}</span><span style=${{fontSize:12,color:"var(--t3)"}}>/ ${money(settings.weeklyGoal)}</span></div></div>
@@ -1657,6 +1691,28 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
       if (src === "Inventory" && !form.inventoryItemId) {
         setError("Select inventory tire");
         return;
+      }
+    }
+
+    // Duplicate detection — warn if same phone + same date already saved.
+    // Common when a customer calls twice or app re-submits. Doesn't block; user confirms.
+    if (!isEditing && form.customerPhone) {
+      const phoneTail = String(form.customerPhone).replace(/\D/g,"").slice(-10);
+      if (phoneTail.length >= 7) {
+        const dupe = (jobs||[]).find(j =>
+          j.id !== editingId &&
+          j.date === form.date &&
+          j.customerPhone &&
+          String(j.customerPhone).replace(/\D/g,"").slice(-10) === phoneTail
+        );
+        if (dupe) {
+          const ok = window.confirm(
+            "Possible duplicate:\n" +
+            (dupe.customerName||"Customer") + " · " + (dupe.service||"") + " · " + money(dupe.revenue||0) + "\n" +
+            "saved earlier today. Save anyway?"
+          );
+          if (!ok) return;
+        }
       }
     }
 
@@ -2035,7 +2091,11 @@ function History({jobs,settings,onRepeat,onDelete,onEdit}) {
       <input value=${search} onChange=${e=>setSearch(e.target.value)} placeholder="Search jobs, tires, customers…" style=${{width:"100%",background:"var(--s2)",border:"1px solid var(--border)",borderRadius:14,padding:"14px 18px",outline:"none",fontSize:15,color:"var(--t1)"}}/>
     </div>
     <div class="chip-row" style=${{marginBottom:10}}>
-      ${["All","Repair","Replacement","Pending"].concat(cities).slice(0,9).map(c=>html`<button key=${c} class=${"chip"+(filter===c?" active":"")} onClick=${()=>setFilter(c)}>${c}</button>`)}
+      ${["All","Repair","Replacement","Pending"].concat(cities).slice(0,9).map(c=>{
+        const count = c === "Pending" ? safeJobs.filter(j=>j.status==="Pending").length : 0;
+        const label = c === "Pending" && count > 0 ? c + " (" + count + ")" : c;
+        return html`<button key=${c} class=${"chip"+(filter===c?" active":"")} onClick=${()=>setFilter(c)}>${label}</button>`;
+      })}
     </div>
     <div style=${{display:"flex",gap:8,marginBottom:14}}>
       <button class=${"chip sm"+(view==="weeks"?" active":"")} onClick=${()=>setView("weeks")}>By Week</button>
@@ -2383,27 +2443,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
     });
     return Object.keys(c).sort(function(a,b){ return c[b] - c[a]; }).slice(0, 5);
   }, [jobsArr]);
-
-  // ── firebase helper (writes to wr2_inventory with full model) ──
-  function fbWriteItem(item) {
-    if (!_db) return;
-    if (isLocalUser(user)) return;  // don't leak local data into shared Firestore
-    if (!(item.size || '').trim()) return;
-    fbSet(invCol(), item.id, {
-      id:        String(item.id),
-      size:      String(item.size || '').trim(),
-      brand:     String(item.brand || ''),
-      model:     String(item.model || ''),
-      condition: String(item.condition || 'New'),
-      qty:       Number(item.qty  || 0),
-      cost:      Number(item.cost || 0),
-      sellPrice: Number(item.sellPrice || 0),
-      notes:     String(item.notes || ''),
-      treadDepth:String(item.treadDepth || ''),
-      dotCode:   String(item.dotCode || ''),
-      createdAt: Number(item.createdAt || Date.now()),
-    });
-  }
 
   // ── NEW TIRE SCREEN: save handler ─────────────────────────────────────────
   function ntPatch(k, v) {
