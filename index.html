@@ -2210,7 +2210,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
 
       <!-- ── SECTION 2.5: PRICING & COSTS ──────────────────────────── -->
       <div class="form-group card-anim">
-        <div class="form-group-title">Pricing &amp; Costs</div>
+        <div class="form-group-title">Pricing & Costs</div>
 
         <div class="field-row">
           <div class="field">
@@ -2273,7 +2273,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
 
       <!-- ── SECTION 3: PAYMENT & CUSTOMER ──────────────────────────── -->
       <div class="form-group card-anim">
-        <div class="form-group-title">Payment &amp; Customer</div>
+        <div class="form-group-title">Payment & Customer</div>
         <div class="field"><label>Payment Method</label><div class="pay-grid">${PAYMENT_OPTIONS.map(p=>html`<button key=${p.label} type="button" class=${"pay-btn press-scale"+(form.payment===p.label?" active":"")} onClick=${()=>setF("payment",p.label)}><span class="pay-icon">${p.icon}</span>${p.label}</button>`)}</div></div>
         <div class="field-row"><div class="field"><label>Name</label><input value=${form.customerName} onChange=${e=>setF("customerName",e.target.value)} placeholder="Customer name"/></div><div class="field"><label>Phone</label><input type="tel" value=${form.customerPhone} onChange=${e=>{setF("customerPhone",e.target.value);setPhoneMatchDismissed(false);}} placeholder="(305)…"/></div></div>
 
@@ -2296,7 +2296,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
     <div class="sticky-save">
       ${isEditing
         ?[html`<button key="cancel" class="btn secondary press-scale" onClick=${cancelEdit}>Cancel</button>`,html`<button key="update" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Update Job ✓"}</button>`]
-        :[html`<button key="addmore" class="btn secondary press-scale" onClick=${()=>doSave(true)} disabled=${saving}>Save &amp; New</button>`,html`<button key="save" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Save Job →"}</button>`]}
+        :[html`<button key="addmore" class="btn secondary press-scale" onClick=${()=>doSave(true)} disabled=${saving}>Save & New</button>`,html`<button key="save" class="btn primary press-scale" onClick=${()=>doSave(false)} disabled=${saving}>${saving?"Saving…":"Save Job →"}</button>`]}
     </div>
   </div>`;
 }
@@ -3342,11 +3342,11 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
   const clearAll=()=>{if(!window.confirm("Clear ALL data? Cannot be undone."))return;Object.values(KEYS).forEach(k=>localStorage.removeItem(k));window.location.reload();};
   const monthly=monthlyFixed(settings),weekly=weeklyFixed(settings);
   return html`<div class="screen"><div class="page page-enter">
-    <div class="section-label" style=${{marginTop:0}}>Owners &amp; Split</div>
+    <div class="section-label" style=${{marginTop:0}}>Owners & Split</div>
     <div class="card card-anim">
       ${[{nk:"owner1Name",pk:"profitSplit1",ak:"owner1Active",lbl:"Owner 1"},{nk:"owner2Name",pk:"profitSplit2",ak:"owner2Active",lbl:"Owner 2"}].map(({nk,pk,ak,lbl})=>{const active=settings[ak]!==false;return html`<div key=${nk} class="settings-row" style=${{opacity:active?1:0.55}}><div style=${{flex:1}}><div style=${{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div class="label">${lbl}</div><button onClick=${()=>upd(ak,!active)} style=${{border:"none",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer",background:active?"var(--t1)":"var(--s3)",color:active?"var(--bg)":"var(--t3)"}}>${active?"ON":"OFF"}</button></div><input class="settings-inp" style=${{width:"100%"}} value=${settings[nk]} onChange=${e=>upd(nk,e.target.value)} disabled=${!active}/></div><div style=${{flexShrink:0,marginLeft:12}}><div class="label" style=${{marginBottom:6}}>Split %</div><input type="number" class="settings-inp" style=${{width:80}} value=${settings[pk]} onChange=${e=>upd(pk,Number(e.target.value||0))} disabled=${!active}/></div></div>`;} )}
     </div>
-    <div class="section-label">Goals &amp; Pricing</div>
+    <div class="section-label">Goals & Pricing</div>
     <div class="card card-anim">
       <div class="settings-row"><div class="label">Weekly Goal</div><input type="number" class="settings-inp" style=${{width:110}} value=${settings.weeklyGoal||""} onChange=${e=>upd("weeklyGoal",Number(e.target.value||0))}/></div>
       <div class="settings-row"><div class="label">Tax Rate %</div><input type="number" class="settings-inp" style=${{width:80}} value=${settings.taxRate||""} onChange=${e=>upd("taxRate",Number(e.target.value||0))}/></div>
