@@ -960,7 +960,10 @@ const isTireMaterialService = svc => /replacement|installation/i.test(String(svc
 // Tweak these in one place if pricing changes.
 const INSTALL_FLAT_PRICING = {1:90, 2:140, 3:190, 4:220};
 const installFlatTotal = qty => {
-  const q = Math.max(1, Math.floor(Number(qty || 1)));
+  // FIX: Same NaN-safety as replacementTierTotal — non-numeric input must not
+  // leak through Math.max as NaN.
+  const n = Number(qty);
+  const q = (Number.isFinite(n) && n >= 1) ? Math.floor(n) : 1;
   if (INSTALL_FLAT_PRICING[q]) return INSTALL_FLAT_PRICING[q];
   // 5+ tires: extend the 3→4 step ($30 each beyond 4)
   return INSTALL_FLAT_PRICING[4] + (q - 4) * 30;
@@ -987,7 +990,11 @@ const installFlatTotal = qty => {
 // To change tier values, edit this object only.
 const REPLACEMENT_TIER_PRICING = {1:120, 2:220, 3:320, 4:400};
 const replacementTierTotal = qty => {
-  const q = Math.max(1, Math.floor(Number(qty || 1)));
+  // FIX: Number("abc") is NaN, Math.max(1, NaN) is NaN, which leaks into
+  // suggested price as "$NaN.00". Explicit isFinite guard returns the
+  // 1-tire fallback for any non-numeric input.
+  const n = Number(qty);
+  const q = (Number.isFinite(n) && n >= 1) ? Math.floor(n) : 1;
   if (REPLACEMENT_TIER_PRICING[q]) return REPLACEMENT_TIER_PRICING[q];
   // 5+ tires: $100 per tire above 4
   return REPLACEMENT_TIER_PRICING[4] + (q - 4) * 100;
@@ -1053,7 +1060,13 @@ function calculateJobPricing(job, settings) {
   // Multiply by qty so a 4-tire install at $80/tire correctly costs $320, not $80.
   // Misc cost is per-job (shop supplies, valve stems, etc.) and does NOT scale.
   const qty         = Math.max(1, Number(j.qty || 1));
-  const tireCost    = Math.max(0, Number(j.tireCost || 0)) * qty;
+  // FIX: Customer-supplied installs MUST NOT charge tireCost — customer brought
+  // the tires. UI defaults the field to $0 but a clone or stale form state
+  // can carry tireCost over from a we-supply job. Engine enforces zero here
+  // so internal cost reports never reflect a tire we didn't actually buy.
+  const tireCost    = isCustomerSuppliedInstall(j)
+    ? 0
+    : Math.max(0, Number(j.tireCost || 0)) * qty;
   const miscCost    = Math.max(0, Number(j.miscCost || 0));
   // FIX: Suppress travel cost when miles ≤ 1. Trivial distances were causing
   // the suggested price to round UP by $5 (e.g. customer-supplied install
