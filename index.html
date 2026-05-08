@@ -3154,13 +3154,19 @@ function Inventory({inventory, setInventory, jobs, user}) {
   function confirmDeleteAll() {
     if (deleteConfirmText !== 'DELETE') return;
     try {
+      const count = Array.isArray(inventory) ? inventory.length : 0;
+
+      // FIX (delete-all bug): stamp wipe timestamp BEFORE setInventory so
+      // the App's listener (which fires after batched cloud delete commits)
+      // sees the wipe marker and discards any ghost data within the grace
+      // window. This is the belt-and-braces protection against listener
+      // races, stale replication, multi-device sync echo, and cache replay.
+      try { localStorage.setItem('wr2_inv_wiped_at', String(Date.now())); } catch(_) {}
+
       // setInventory([]) → handleSetInventory in App, which detects the wipe
       // and uses a batched cloud delete (instead of per-row fbDel) so the
-      // Firestore listener only fires once at the end. Without the batch,
-      // intermediate listener fires bounced partial remainders back into
-      // local state and the wipe appeared to fail.
+      // Firestore listener only fires once at the end.
       // Job history, invoices, customers, payouts, expenses are NOT touched.
-      const count = Array.isArray(inventory) ? inventory.length : 0;
       setInventory([]);
       setShowDeleteModal(false);
       setDeleteConfirmText('');
@@ -4273,14 +4279,15 @@ function App() {
   // a rapid second click within one frame can re-enter saveJob before React
   // commits the first setSaving(true). useRef gives synchronous read/write.
   const savingLockRef = useRef(false);
-  // FIX (delete-all bug): the inventory listener originally had a `length > 0`
-  // guard to prevent an empty first-snapshot from clobbering local default
-  // inventory at fresh sign-in. That guard broke Delete All — once the user
-  // wiped the cloud, every intermediate listener fire pushed the partial
-  // remainder back into local state, making rows appear to "come back."
-  // This ref lets us tell first-snapshot from subsequent ones: trust local on
-  // first empty fire only, accept every fire after that (including empty).
+  // FIX (delete-all bug, layer 2): even with batched cloud delete + ref guard,
+  // there are edge cases where a listener fire can push stale cloud data back
+  // into local state after a wipe (multi-device sync, slow Firestore replication,
+  // browser cache replay). Belt-and-braces: stamp a wipe timestamp in
+  // localStorage when Delete All runs. The listener treats any non-empty fire
+  // within 10 seconds of that stamp as ghost data and discards it.
   const inventoryHasLoadedRef = useRef(false);
+  const WIPE_GRACE_MS = 10000;
+  const WIPE_KEY = "wr2_inv_wiped_at";
 
   // ── Auth listener ────────────────────────────────────────────────────────
   useEffect(()=>{
@@ -4307,6 +4314,23 @@ function App() {
     });
     const u2=fbListen(invCol(),docs=>{
       const docArr=Array.isArray(docs)?docs:[];
+
+      // FIX (delete-all bug, layer 2): if user just performed Delete All
+      // within last WIPE_GRACE_MS, ignore any non-empty cloud snapshots.
+      // Catches: stale Firestore replication, browser cache replay,
+      // multi-device sync echo, and any other path where ghost data could
+      // come back from the cloud during the wipe window.
+      // Note: marker is NOT cleared on the confirming empty fire. Letting it
+      // expire naturally on the timestamp ensures any out-of-order ghost
+      // snapshot arriving AFTER the empty confirmation is still discarded.
+      let wipedAt = 0;
+      try { wipedAt = Number(localStorage.getItem(WIPE_KEY) || 0); } catch(_) {}
+      const inWipeGrace = wipedAt > 0 && (Date.now() - wipedAt) < WIPE_GRACE_MS;
+      if (inWipeGrace && docArr.length > 0) {
+        // Ghost data within wipe window — ignore. Local state stays empty.
+        return;
+      }
+
       // Guard: if cloud is empty AND we haven't loaded yet, skip — prevents a
       // phantom first-fire from clobbering local default inventory at fresh
       // sign-in. Once we've seen a non-empty snapshot, accept all subsequent
@@ -4610,6 +4634,13 @@ function App() {
       const raw=typeof updater==="function"?updater(prevArr):updater;
       const next=Array.isArray(raw)?raw:prevArr;
       persist(KEYS.inventory,next);
+      // FIX: any non-empty local write clears the wipe marker. This way a
+      // user who hits Delete All then immediately bulk-uploads (or adds a
+      // single tire, or edits qty) doesn't have those new writes treated
+      // as ghost data by the listener's grace-window guard.
+      if (next.length > 0) {
+        try { localStorage.removeItem('wr2_inv_wiped_at'); } catch(_) {}
+      }
       if(user && !isLocalUser(user) && invCol()) {
         // FIX (delete-all bug): when wiping to empty, use a batched delete
         // instead of per-row forEach. Per-row fbDel fires the snapshot
