@@ -916,6 +916,30 @@ const monthlyFixed   = s => { const exps=Array.isArray(s.expenses)?s.expenses:[]
 // Single source of truth for "does this service use tires/materials that should be tracked?"
 // Used by validation, deduction gating, and UI visibility of the Tire Source section.
 const isTireMaterialService = svc => /replacement|installation/i.test(String(svc||""));
+
+// ── Customer-supplied install pricing ────────────────────────────────────────
+// When the customer brings their own tires for an Installation job, pricing is a
+// flat tier table — NOT multiplied. This reflects bundled labor where the second,
+// third, fourth tire add less marginal time than a fresh setup each.
+//   1 tire  = $90    (standard mount/balance)
+//   2 tires = $140   (+$50)
+//   3 tires = $190   (+$50)
+//   4 tires = $220   (+$30 — bulk break)
+//   5+      = $220 + $30 per extra tire
+// Tweak these in one place if pricing changes.
+const INSTALL_FLAT_PRICING = {1:90, 2:140, 3:190, 4:220};
+const installFlatTotal = qty => {
+  const q = Math.max(1, Math.floor(Number(qty || 1)));
+  if (INSTALL_FLAT_PRICING[q]) return INSTALL_FLAT_PRICING[q];
+  // 5+ tires: extend the 3→4 step ($30 each beyond 4)
+  return INSTALL_FLAT_PRICING[4] + (q - 4) * 30;
+};
+
+// True only when this is an Installation job AND the customer brought their own tires.
+// This is the trigger for flat-tier pricing instead of per-tire scaling.
+const isCustomerSuppliedInstall = j =>
+  /installation/i.test(String(j && j.service || "")) &&
+  String(j && j.tireSource || "") === "Customer supplied";
 // ── Distance premium (tiered) ────────────────────────────────────────────────
 // 0-10 mi:+$0 · 10-25 mi:+$15 · 25+ mi:+$35 (new tiered rule, replaces flat +$20>25)
 function distancePremium(miles) {
@@ -977,11 +1001,22 @@ function calculateJobPricing(job, settings) {
   const baseTarget = (svcRule && svcRule.minProfit != null && !isNaN(Number(svcRule.minProfit)))
     ? Number(svcRule.minProfit)
     : Number(s.defaultTargetProfit || 100);
-  // PATCH 2: Multi-tire replacement/installation jobs do roughly N× the labor of a single tire,
-  // so target profit scales with qty for those services. Repairs, rotations, and roadside
-  // calls are per-job regardless of tire count, so they don't scale.
-  const isMultiTireWork = isTireMaterialService(j.service);
-  const targetProfit = (baseTarget * (isMultiTireWork ? qty : 1)) + vehicleAdd;
+  // PATCH 2 (revised): Three pricing branches, picked by service + tire source:
+  //
+  //   A. Installation + customer-supplied tires → FLAT TIER table (1=$90, 2=$140, 3=$190, 4=$220, 5+:+$30 each)
+  //      Bundled labor — installing four tires isn't 4× the work of one.
+  //      No tire cost added (customer brought them). Vehicle add-on still applies.
+  //
+  //   B. Replacement / Installation we provide → PER-TIRE profit × qty + tire cost
+  //      Each tire is a separate sale plus mount/balance labor.
+  //
+  //   C. Repairs, roadside, rotations, etc. → FLAT target, no qty scaling
+  //      Per-job regardless of tire count.
+  const isFlatInstall   = isCustomerSuppliedInstall(j);
+  const isMultiTireWork = !isFlatInstall && isTireMaterialService(j.service);
+  const targetProfit = isFlatInstall
+    ? (installFlatTotal(qty) + vehicleAdd)            // A: flat tier + vehicle add-on
+    : (baseTarget * (isMultiTireWork ? qty : 1)) + vehicleAdd; // B: per-tire scaling, or C: flat
 
   const distanceAdj   = distancePremium(miles);
   const urgencyBase   = premiums(j);
@@ -1460,7 +1495,7 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
   const calc = calculateJobPricing(form, settings);
   const { directCost, suggestedPrice:suggested, premiumPrice, urgencyPremium:prem,
           travelCost, tireCost, miscCost, distanceAdj, vehicleAdd,
-          baseTarget, decisionLabel, decisionType } = calc;
+          baseTarget, targetProfit, decisionLabel, decisionType } = calc;
 
   const skip = Number(settings.skipThreshold||70);
   // Displayed price depends on mode — but profit is always recomputed from the active price.
@@ -1507,7 +1542,7 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
           ${prem>0&&html`<div style=${{width:1,background:"var(--border)"}}/><div style=${{textAlign:"center"}}><div style=${{fontSize:10,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Premium</div><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:15,fontWeight:700,color:"#fb923c"}}>+${money(prem)}</div></div>`}
         </div>
         ${priceMode!=="custom"&&html`<div style=${{fontSize:10,color:"var(--t3)",textAlign:"center",marginBottom:8,fontFamily:'"IBM Plex Mono",monospace',letterSpacing:".2px"}}>
-          ${"Target "+money(baseTarget)}${travelCost>0?" + Travel "+money(travelCost):""}${tireCost>0?" + Tire "+money(tireCost):""}${miscCost>0?" + Misc "+money(miscCost):""}${vehicleAdd>0?" + Vehicle "+money(vehicleAdd):""}${distanceAdj>0?" + Distance "+money(distanceAdj):""}${(prem-distanceAdj)>0?" + Urgency "+money(prem-distanceAdj):""}
+          ${"Target "+money(targetProfit - vehicleAdd)}${travelCost>0?" + Travel "+money(travelCost):""}${tireCost>0?" + Tire "+money(tireCost):""}${miscCost>0?" + Misc "+money(miscCost):""}${vehicleAdd>0?" + Vehicle "+money(vehicleAdd):""}${distanceAdj>0?" + Distance "+money(distanceAdj):""}${(prem-distanceAdj)>0?" + Urgency "+money(prem-distanceAdj):""}
         </div>`}
         <span class=${"qq-dec-badge "+badgeCls}>${liveDec.label}</span>
       </div>
