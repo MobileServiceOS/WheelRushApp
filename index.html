@@ -2225,11 +2225,11 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
                   const sub = [i.brand,i.model].filter(s=>s&&s.trim()).join(" ");
                   const tread = String(i.treadDepth||"").trim();
                   return html`<button key=${i.id} type="button" class="press-scale"
-                    onClick=${()=>{
+                   onClick=${()=>{
                       const changes={inventoryItemId:i.id};
-                      // Auto-fill tire cost if not yet set
+                      // Auto-fill tire cost (per-tire). Engine multiplies by qty internally.
                       if(Number(i.cost||0)>0 && (!form.tireCost || Number(form.tireCost)===0)){
-                        changes.tireCost = String(Number(i.cost||0) * Math.max(1,Number(form.qty||1)));
+                        changes.tireCost = String(Number(i.cost||0));  // per-tire, NOT × qty
                       }
                       if(i.brand && !form.tireBrand) changes.tireBrand = i.brand;
                       if(i.model && !form.tireModel) changes.tireModel = i.model;
