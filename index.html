@@ -2924,6 +2924,14 @@ function Inventory({inventory, setInventory, jobs, user}) {
   const [view,    setView]    = useState('list');   // 'list' | 'new'
   const [tab,     setTab]     = useState('All');    // 'All' | 'New' | 'Used' | 'Low'
 
+  // ── Admin actions state ──────────────────────────────────────────────────
+  // Delete-all confirmation modal
+  const [showDeleteModal, setShowDeleteModal]   = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  // Bulk upload preview modal — null = not previewing, else { valid:[], skipped:[], totalRows, fileName }
+  const [bulkPreview, setBulkPreview] = useState(null);
+  const fileInputRef = useRef(null);
+
   // New Tire form state — separate from list, only lives while view==='new'
   const EMPTY_NEW = {size:'',brand:'',model:'',condition:'New',qty:'1',cost:'',sellPrice:'',notes:'',treadDepth:'',dotCode:''};
   const [nt, setNt] = useState(EMPTY_NEW);
@@ -2936,6 +2944,251 @@ function Inventory({inventory, setInventory, jobs, user}) {
       ntSizeRef.current.focus();
     }
   }, [view]);
+
+  // ── CSV parser shared by parse + preview ─────────────────────────────────
+  // Accepts the raw text and returns { valid:[item], skipped:[{line,reason}], totalRows }.
+  // Required: tireSize. Defaults: quantity=1, condition=used, cost=0.
+  // Smart-merge happens later in confirmBulkImport.
+  function parseInventoryCsv(text) {
+    function splitCsvLine(line) {
+      const out=[]; let cur=""; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(inQ){
+          if(ch==='"' && line[i+1]==='"'){ cur+='"'; i++; }
+          else if(ch==='"'){ inQ=false; }
+          else cur+=ch;
+        } else {
+          if(ch===','){ out.push(cur); cur=""; }
+          else if(ch==='"'){ inQ=true; }
+          else cur+=ch;
+        }
+      }
+      out.push(cur);
+      return out.map(s=>s.trim());
+    }
+
+    const lines = text.replace(/\r\n/g, "\n").split("\n").filter(l => l.trim());
+    if (lines.length < 2) throw new Error('CSV needs a header row and at least one data row');
+
+    const headers = splitCsvLine(lines[0]).map(h => h.toLowerCase().trim());
+    const headerMap = {};
+    headers.forEach((h, i) => {
+      // tireSize aliases
+      if (h === "tiresize" || h === "tire size" || h === "size") headerMap.tireSize = i;
+      // quantity aliases
+      else if (h === "quantity" || h === "qty" || h === "stock" || h === "count") headerMap.quantity = i;
+      // condition aliases
+      else if (h === "condition" || h === "cond") headerMap.condition = i;
+      // cost aliases
+      else if (h === "cost" || h === "cost price" || h === "cost ea" || h === "cost each") headerMap.cost = i;
+      // optional
+      else if (h === "brand" || h === "make") headerMap.brand = i;
+      else if (h === "model") headerMap.model = i;
+      else if (h === "treaddepth" || h === "tread depth" || h === "tread") headerMap.treadDepth = i;
+      else if (h === "notes" || h === "note" || h === "comment") headerMap.notes = i;
+      else if (h === "sellprice" || h === "sell price" || h === "sell" || h === "price" || h === "retail") headerMap.sellPrice = i;
+    });
+
+    if (headerMap.tireSize === undefined) {
+      throw new Error('CSV needs a "tireSize" column. Found: ' + headers.join(", "));
+    }
+
+    const skipped = [];
+    const valid = [];
+    const dataLines = lines.slice(1);
+
+    dataLines.forEach((line, idx) => {
+      const lineNum = idx + 2; // 1-based, +1 for header
+      const cells = splitCsvLine(line);
+
+      // tireSize is REQUIRED
+      const sizeRaw = String(cells[headerMap.tireSize] || "").trim();
+      if (!sizeRaw) {
+        skipped.push({ line: lineNum, reason: "Missing tireSize" });
+        return;
+      }
+      const sizeNorm = normalizeTireSize(sizeRaw);
+      if (!sizeNorm) {
+        skipped.push({ line: lineNum, reason: "Invalid tireSize: " + sizeRaw });
+        return;
+      }
+
+      // quantity — default 1, also default if not a positive number
+      let qty = 1;
+      if (headerMap.quantity !== undefined) {
+        const q = Number(cells[headerMap.quantity]);
+        qty = (Number.isFinite(q) && q > 0) ? Math.floor(q) : 1;
+      }
+
+      // condition — default "used", normalize to canonical "New"/"Used"
+      let condition = 'Used';
+      if (headerMap.condition !== undefined) {
+        const c = String(cells[headerMap.condition] || "").trim().toLowerCase();
+        if (c === 'new') condition = 'New';
+        else if (c === 'used' || c === '') condition = 'Used';
+        else condition = 'Used'; // unknown values default to used per spec
+      }
+
+      // cost — default 0
+      let cost = 0;
+      if (headerMap.cost !== undefined) {
+        const c = Number(cells[headerMap.cost]);
+        cost = Number.isFinite(c) && c >= 0 ? c : 0;
+      }
+
+      // optional
+      const brand = headerMap.brand !== undefined ? String(cells[headerMap.brand] || "").trim() : "";
+      const model = headerMap.model !== undefined ? String(cells[headerMap.model] || "").trim() : "";
+      const treadDepth = headerMap.treadDepth !== undefined ? String(cells[headerMap.treadDepth] || "").trim() : "";
+      const notes = headerMap.notes !== undefined ? String(cells[headerMap.notes] || "").trim() : "";
+      let sellPrice = 0;
+      if (headerMap.sellPrice !== undefined) {
+        const sp = Number(cells[headerMap.sellPrice]);
+        sellPrice = Number.isFinite(sp) && sp >= 0 ? sp : 0;
+      }
+
+      valid.push({
+        id: uid(),
+        size: sizeNorm,
+        brand: brand,
+        model: model,
+        condition: condition,
+        qty: qty,
+        cost: cost,
+        sellPrice: sellPrice,
+        treadDepth: treadDepth,
+        notes: notes,
+      });
+    });
+
+    return { valid, skipped, totalRows: dataLines.length };
+  }
+
+  // ── Bulk upload: open file picker, parse, show preview ───────────────────
+  function openBulkUpload() {
+    if (!fileInputRef.current) return;
+    fileInputRef.current.value = ''; // reset so re-uploading the same file works
+    fileInputRef.current.click();
+  }
+
+  async function handleFileSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const result = parseInventoryCsv(text);
+      setBulkPreview({
+        valid: result.valid,
+        skipped: result.skipped,
+        totalRows: result.totalRows,
+        fileName: file.name,
+      });
+    } catch (err) {
+      console.warn('bulk upload parse:', err);
+      try { if (window.toast) window.toast('Could not parse CSV: ' + (err.message || 'unknown'), 'error', 4500); } catch(_) {}
+    }
+  }
+
+  // ── Confirm import: smart-merge by size+condition into existing inventory ──
+  function confirmBulkImport() {
+    if (!bulkPreview || bulkPreview.valid.length === 0) return;
+
+    // Match key: size + condition. Per spec ("merge duplicate tire sizes by
+    // adding quantities together"), but preserves New/Used split because tread
+    // depth and pricing differ between conditions. Brand/model live on the row
+    // but don't gate the merge — the dominant brand of the most recent upload
+    // wins for the merged row.
+    const keyOf = i => {
+      const sz = normalizeTireSize(i.size || '') || (i.size || '').trim();
+      const cond = String(i.condition || '').toLowerCase() === 'used' ? 'used' : 'new';
+      return sz + '||' + cond;
+    };
+
+    const existing = Array.isArray(inventory) ? inventory : [];
+    const finalList = existing.map(it => ({...it}));
+    const byKey = {};
+    finalList.forEach(it => { byKey[keyOf(it)] = it; });
+
+    let mergedRows = 0;
+    let newRows = 0;
+    bulkPreview.valid.forEach(item => {
+      const k = keyOf(item);
+      const match = byKey[k];
+      if (match) {
+        // Sum quantities. Fill cost/sellPrice/brand/model/notes if existing was empty.
+        match.qty = Number(match.qty || 0) + Number(item.qty || 0);
+        if (!match.cost && item.cost) match.cost = item.cost;
+        if (!match.sellPrice && item.sellPrice) match.sellPrice = item.sellPrice;
+        if (!match.brand && item.brand) match.brand = item.brand;
+        if (!match.model && item.model) match.model = item.model;
+        if (!match.treadDepth && item.treadDepth) match.treadDepth = item.treadDepth;
+        if (item.notes && item.notes !== match.notes) {
+          match.notes = match.notes ? (match.notes + ' | ' + item.notes) : item.notes;
+        }
+        mergedRows++;
+      } else {
+        finalList.push(item);
+        byKey[k] = item;
+        newRows++;
+      }
+    });
+
+    // setInventory triggers Firestore write via handleSetInventory bridge in App.
+    setInventory(finalList);
+    setBulkPreview(null);
+
+    const parts = [];
+    if (newRows > 0) parts.push(newRows + ' new');
+    if (mergedRows > 0) parts.push(mergedRows + ' merged');
+    if (bulkPreview.skipped.length > 0) parts.push(bulkPreview.skipped.length + ' skipped');
+    try { if (window.toast) window.toast('Import complete: ' + parts.join(', '), 'success', 3500); } catch(_) {}
+  }
+
+  // ── Delete all stock: open modal, require typed DELETE ───────────────────
+  function openDeleteAllModal() {
+    setDeleteConfirmText('');
+    setShowDeleteModal(true);
+  }
+
+  function confirmDeleteAll() {
+    if (deleteConfirmText !== 'DELETE') return;
+    try {
+      // setInventory([]) triggers handleSetInventory in App, which:
+      //   - persists [] to localStorage
+      //   - issues fbDel to Firestore for every previously-existing row
+      // Job history, invoices, customers, payouts, expenses are NOT touched.
+      setInventory([]);
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+      try { if (window.toast) window.toast('All stock deleted', 'success'); } catch(_) {}
+    } catch (e) {
+      console.warn('deleteAll:', e);
+      try { if (window.toast) window.toast('Delete failed: ' + (e.message || 'unknown'), 'error'); } catch(_) {}
+    }
+  }
+
+  function cancelDeleteAll() {
+    setShowDeleteModal(false);
+    setDeleteConfirmText('');
+  }
+
+  // ── Sample CSV download ──────────────────────────────────────────────────
+  function downloadSampleCsv() {
+    const csv = [
+      'tireSize,quantity,condition,cost,brand,model,treadDepth,notes',
+      '245/45R18,4,used,55,Firestone,Firehawk,7/32,good set',
+      '275/55R20,2,new,160,Goodyear,Eagle,,new pair',
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'wheel-rush-inventory-template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    try { if (window.toast) window.toast('Sample CSV downloaded', 'info'); } catch(_) {}
+  }
 
   // ── best sellers ──────────────────────────────────────────────────────────
   const bestSellers = useMemo(function() {
@@ -3397,11 +3650,37 @@ function Inventory({inventory, setInventory, jobs, user}) {
 
   return html`<div class="screen"><div class="page page-enter">
 
+    <!-- hidden file input for bulk upload -->
+    <input ref=${fileInputRef} type="file" accept=".csv,text/csv" style=${{display:'none'}} onChange=${handleFileSelected}/>
+
     <!-- stats strip -->
     <div class="kpi-grid three card-anim">
       <div class="kpi"><div class="kpi-label">Total Tires</div><div class="kpi-value">${totalQty}</div><div class="kpi-sub">${deduped.length} sizes</div></div>
       <div class="kpi"><div class="kpi-label">Stock Value</div><div class="kpi-value" style=${{fontSize:16}}>${money(totalVal)}</div><div class="kpi-sub">at cost</div></div>
       <div class="kpi"><div class="kpi-label">Out of Stock</div><div class="kpi-value" style=${{fontSize:20,color:outStock.length>0?'var(--amber)':'var(--t3)'}}>${outStock.length}</div><div class="kpi-sub">sizes</div></div>
+    </div>
+
+    <!-- ── Admin Actions ──────────────────────────────────────────────── -->
+    <!-- Two-column row of large mobile-friendly tap targets, full-width on small screens -->
+    <div class="card-anim" style=${{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+      <button class="press-scale" onClick=${openBulkUpload}
+        style=${{background:'linear-gradient(135deg,rgba(79,142,247,.15),rgba(79,142,247,.06))',border:'1px solid rgba(79,142,247,.3)',color:'var(--blue)',borderRadius:14,padding:'14px 12px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4,minHeight:64,letterSpacing:'-.1px'}}>
+        <span style=${{fontSize:20}}>📤</span>
+        <span>Bulk Upload CSV</span>
+      </button>
+      <button class="press-scale" onClick=${openDeleteAllModal}
+        style=${{background:'linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.04))',border:'1px solid rgba(239,68,68,.3)',color:'var(--red)',borderRadius:14,padding:'14px 12px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4,minHeight:64,letterSpacing:'-.1px'}}>
+        <span style=${{fontSize:20}}>🗑</span>
+        <span>Delete All Stock</span>
+      </button>
+    </div>
+
+    <!-- Sample CSV download — small inline link, no visual weight -->
+    <div class="card-anim" style=${{textAlign:'center',marginBottom:14}}>
+      <button onClick=${downloadSampleCsv}
+        style=${{background:'transparent',border:'none',color:'var(--t3)',fontSize:11,fontWeight:600,cursor:'pointer',padding:'4px 8px',textDecoration:'underline',textUnderlineOffset:'3px'}}>
+        ↓ Download sample CSV template
+      </button>
     </div>
 
     <!-- out-of-stock alerts -->
@@ -3474,6 +3753,109 @@ function Inventory({inventory, setInventory, jobs, user}) {
             </div>`;
           })}
         </div>`}
+
+    <!-- ── Delete All confirmation modal ─────────────────────────────── -->
+    ${showDeleteModal && html`<div
+      onClick=${cancelDeleteAll}
+      style=${{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <div onClick=${e => e.stopPropagation()}
+        style=${{background:'var(--s1)',border:'1px solid var(--border)',borderRadius:18,padding:24,maxWidth:420,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(239,68,68,.2)',animation:'scaleIn .25s cubic-bezier(.34,1.56,.64,1)'}}>
+        <div style=${{textAlign:'center',marginBottom:18}}>
+          <div style=${{fontSize:42,marginBottom:8}}>⚠️</div>
+          <div style=${{fontSize:20,fontWeight:800,color:'var(--t1)',letterSpacing:'-.5px',marginBottom:6}}>Delete All Stock?</div>
+          <div style=${{fontSize:13,color:'var(--t2)',lineHeight:1.5}}>This will permanently remove all <strong style=${{color:'var(--red)',fontWeight:700}}>${inv.length}</strong> inventory item${inv.length===1?'':'s'}. Job history, invoices, and customer data will not be affected.</div>
+        </div>
+        <div style=${{marginBottom:16}}>
+          <div style=${{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'1px',color:'var(--t3)',marginBottom:8}}>Type DELETE to confirm</div>
+          <input
+            value=${deleteConfirmText}
+            onChange=${e => setDeleteConfirmText(e.target.value)}
+            placeholder="DELETE"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellcheck="false"
+            style=${{width:'100%',background:'var(--s3)',border:deleteConfirmText==='DELETE'?'1.5px solid var(--red)':'1px solid var(--border)',borderRadius:12,padding:'14px 16px',fontSize:16,color:'var(--t1)',outline:'none',fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,letterSpacing:'2px',textAlign:'center'}}/>
+        </div>
+        <div style=${{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          <button class="press-scale" onClick=${cancelDeleteAll}
+            style=${{background:'var(--s3)',color:'var(--t1)',border:'1px solid var(--border)',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:'pointer'}}>Cancel</button>
+          <button class="press-scale" onClick=${confirmDeleteAll} disabled=${deleteConfirmText !== 'DELETE'}
+            style=${{background:deleteConfirmText==='DELETE'?'var(--red)':'var(--s3)',color:deleteConfirmText==='DELETE'?'#fff':'var(--t3)',border:'none',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:deleteConfirmText==='DELETE'?'pointer':'not-allowed',transition:'all .15s'}}>Delete All</button>
+        </div>
+      </div>
+    </div>`}
+
+    <!-- ── Bulk upload preview modal ─────────────────────────────────── -->
+    ${bulkPreview && html`<div
+      onClick=${() => setBulkPreview(null)}
+      style=${{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',zIndex:1000,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:0}}>
+      <div onClick=${e => e.stopPropagation()}
+        style=${{background:'var(--s1)',border:'1px solid var(--border)',borderTopLeftRadius:20,borderTopRightRadius:20,padding:'24px 20px',maxWidth:560,width:'100%',maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 -20px 60px rgba(0,0,0,.6)',animation:'fadeSlideUp .3s cubic-bezier(.34,1.56,.64,1)',paddingBottom:'calc(24px + env(safe-area-inset-bottom))'}}>
+        <!-- Drag handle -->
+        <div style=${{width:40,height:4,background:'var(--s4)',borderRadius:2,margin:'0 auto 16px'}}/>
+
+        <div style=${{textAlign:'center',marginBottom:18,flexShrink:0}}>
+          <div style=${{fontSize:36,marginBottom:6}}>📋</div>
+          <div style=${{fontSize:18,fontWeight:800,color:'var(--t1)',letterSpacing:'-.3px'}}>Import Preview</div>
+          <div style=${{fontSize:11,color:'var(--t3)',marginTop:4,fontFamily:'"IBM Plex Mono",monospace',wordBreak:'break-all'}}>${bulkPreview.fileName}</div>
+        </div>
+
+        <!-- Stats -->
+        <div style=${{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:18,flexShrink:0}}>
+          <div style=${{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
+            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:22,fontWeight:800,color:'var(--t1)',letterSpacing:'-.5px'}}>${bulkPreview.totalRows}</div>
+            <div style=${{fontSize:9,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.5px',marginTop:3}}>Total Rows</div>
+          </div>
+          <div style=${{background:'var(--green-dim)',border:'1px solid rgba(34,197,94,.25)',borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
+            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:22,fontWeight:800,color:'var(--green)',letterSpacing:'-.5px'}}>${bulkPreview.valid.length}</div>
+            <div style=${{fontSize:9,fontWeight:700,color:'var(--green)',textTransform:'uppercase',letterSpacing:'.5px',marginTop:3}}>Valid</div>
+          </div>
+          <div style=${{background:bulkPreview.skipped.length>0?'var(--amber-dim)':'var(--s2)',border:'1px solid '+(bulkPreview.skipped.length>0?'rgba(245,158,11,.3)':'var(--border)'),borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
+            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:22,fontWeight:800,color:bulkPreview.skipped.length>0?'var(--amber)':'var(--t3)',letterSpacing:'-.5px'}}>${bulkPreview.skipped.length}</div>
+            <div style=${{fontSize:9,fontWeight:700,color:bulkPreview.skipped.length>0?'var(--amber)':'var(--t3)',textTransform:'uppercase',letterSpacing:'.5px',marginTop:3}}>Skipped</div>
+          </div>
+        </div>
+
+        <!-- Scrollable preview list -->
+        <div style=${{flex:1,minHeight:0,overflowY:'auto',background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,marginBottom:16}}>
+          ${bulkPreview.valid.length>0 && html`<div>
+            ${bulkPreview.valid.slice(0,30).map(function(item, idx) {
+              return html`<div key=${idx} style=${{padding:'10px 14px',borderBottom:idx<Math.min(bulkPreview.valid.length,30)-1?'1px solid var(--border2)':'none',display:'flex',alignItems:'center',gap:10}}>
+                <div style=${{flex:1,minWidth:0}}>
+                  <div style=${{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                    <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:13,color:'var(--t1)'}}>${item.size}</span>
+                    <span style=${{fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:999,letterSpacing:'.3px',color:item.condition==='Used'?'var(--amber)':'var(--green)',background:item.condition==='Used'?'var(--amber-dim)':'var(--green-dim)'}}>${item.condition.toUpperCase()}</span>
+                  </div>
+                  ${(item.brand || item.model) && html`<div style=${{fontSize:11,color:'var(--t3)',marginTop:2}}>${[item.brand, item.model].filter(Boolean).join(' ')}</div>`}
+                </div>
+                <div style=${{textAlign:'right',flexShrink:0}}>
+                  <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:13,color:'var(--t1)'}}>×${item.qty}</div>
+                  ${item.cost>0 && html`<div style=${{fontSize:10,color:'var(--t3)',marginTop:1}}>${money(item.cost)} ea</div>`}
+                </div>
+              </div>`;
+            })}
+            ${bulkPreview.valid.length > 30 && html`<div style=${{padding:'10px 14px',fontSize:11,color:'var(--t3)',textAlign:'center',fontWeight:600}}>…and ${bulkPreview.valid.length - 30} more</div>`}
+          </div>`}
+          ${bulkPreview.skipped.length>0 && html`<div style=${{borderTop:bulkPreview.valid.length>0?'2px solid var(--border)':'none'}}>
+            <div style=${{padding:'8px 14px',fontSize:9,fontWeight:800,color:'var(--amber)',textTransform:'uppercase',letterSpacing:'.6px',background:'var(--amber-dim)'}}>Skipped (${bulkPreview.skipped.length})</div>
+            ${bulkPreview.skipped.slice(0,10).map(function(s, idx) {
+              return html`<div key=${idx} style=${{padding:'8px 14px',borderBottom:idx<Math.min(bulkPreview.skipped.length,10)-1?'1px solid var(--border2)':'none',fontSize:11,color:'var(--t2)'}}>
+                <span style=${{fontFamily:'"IBM Plex Mono",monospace',color:'var(--t3)'}}>Line ${s.line}:</span> ${s.reason}
+              </div>`;
+            })}
+            ${bulkPreview.skipped.length > 10 && html`<div style=${{padding:'8px 14px',fontSize:11,color:'var(--t3)',textAlign:'center'}}>…and ${bulkPreview.skipped.length - 10} more</div>`}
+          </div>`}
+        </div>
+
+        <!-- Action buttons -->
+        <div style=${{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,flexShrink:0}}>
+          <button class="press-scale" onClick=${() => setBulkPreview(null)}
+            style=${{background:'var(--s3)',color:'var(--t1)',border:'1px solid var(--border)',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:'pointer'}}>Cancel</button>
+          <button class="press-scale" onClick=${confirmBulkImport} disabled=${bulkPreview.valid.length===0}
+            style=${{background:bulkPreview.valid.length>0?'linear-gradient(135deg,#5a97ff,#3d7ef5)':'var(--s3)',color:bulkPreview.valid.length>0?'#fff':'var(--t3)',border:'none',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:bulkPreview.valid.length>0?'pointer':'not-allowed',boxShadow:bulkPreview.valid.length>0?'0 4px 16px rgba(79,142,247,.3)':'none'}}>Import ${bulkPreview.valid.length}</button>
+        </div>
+      </div>
+    </div>`}
 
   </div></div>`;
 }
@@ -3634,8 +4016,8 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
     <div class="card card-anim">
       <div class="card-row"><div class="label">Export CSV</div><button class="btn secondary sm press-scale" onClick=${exportCSV}>CSV</button></div>
       <div class="card-row"><div class="label">Full Backup</div><button class="btn secondary sm press-scale" onClick=${exportData}>JSON</button></div>
-      <div class="card-row"><div class="label">Import</div><button class="btn secondary sm press-scale" onClick=${importData}>Import</button></div>
-      <div class="card-row"><div class="label">Reset Inventory</div><button class="btn orange sm press-scale" onClick=${resetInventory}>Reset</button></div>
+      <div class="card-row"><div class="label">Import Backup</div><button class="btn secondary sm press-scale" onClick=${importData}>Import</button></div>
+      <div class="card-row"><div class="label">Reset Inventory</div><button class="btn orange sm press-scale" onClick=${resetInventory}>Reset to Defaults</button></div>
       <div class="card-row"><div class="label" style=${{color:"var(--red)"}}>Reset Everything</div><button class="btn danger sm" onClick=${clearAll}>Reset</button></div>
     </div>
     <div style=${{padding:"8px 0 4px",textAlign:"center",fontSize:11,color:"var(--t3)"}}>Wheel Rush v10 Pro · Firebase Sync</div>
