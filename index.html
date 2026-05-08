@@ -1797,8 +1797,15 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
     <div class="card-anim">
       <div class="section-label" style=${{marginTop:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <span>Quick Quote</span>
-        ${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{if(onStartJob)onStartJob(qqForm);setQqForm({service:"Flat Tire Repair",vehicleType:"Car",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});setQqMode("suggested");}}>Start Job →</button>`}
-      </div>
+${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{
+          if(onStartJob)onStartJob(qqForm);
+          setQqForm({
+            service:"Flat Tire Repair",vehicleType:"Car",tireSource:"Customer supplied",
+            miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",
+            emergency:false,lateNight:false,highway:false,weekend:false
+          });
+          setQqMode("suggested");
+        }}>Start Job →</button>`}      </div>
       <div style=${{marginBottom:4}}>
         <div style=${{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
           ${SERVICE_KEYS.filter(s=>{
