@@ -1963,12 +1963,14 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
   const setF=(k,v)=>{
     setForm(p=>{
       const next={...p,[k]:v};
+      // FIX: tireCost stored as PER-TIRE — calculateJobPricing multiplies by qty
+      // internally. Storing total here caused qty² scaling (4 tires @ $50 = $800
+      // direct cost in engine instead of $200).
       if (k === "qty" && next.inventoryItemId && next.tireSource === "Inventory") {
         const safeInv = Array.isArray(inventory) ? inventory : [];
         const item = safeInv.find(i => i.id === next.inventoryItemId);
         if (item && Number(item.cost||0) > 0) {
-          const newQty = Math.max(1, Number(v||1));
-          next.tireCost = String(Number(item.cost) * newQty);
+          next.tireCost = String(Number(item.cost));   // per-tire, NOT × qty
         }
       }
       return next;
