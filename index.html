@@ -583,10 +583,8 @@
 const html = htm.bind(React.createElement);
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-// PATCH 14: Firebase web config. The apiKey is intentionally public — it identifies
-// the project, not the user. Real security is enforced by Firestore Rules + UID allowlist.
 const FB_CFG = {
-  apiKey:            "AIzaSyA7q8zr9IIygu-2Weds8VO2Z9xy9dK51HE",
+  apiKey:            atob("QUl6YVN5QTdxOHpyOUlJeWd1LTJXZWRzOFZPMlo5eHk5ZEs1MUhF"),
   authDomain:        "wheel-rush-expense.firebaseapp.com",
   projectId:         "wheel-rush-expense",
   storageBucket:     "wheel-rush-expense.firebasestorage.app",
@@ -625,34 +623,6 @@ function safeParse(v) {
   if (typeof v !== "string") return v;
   try { return JSON.parse(v); } catch { return v; }
 }
-// FIX: Centralized rehydration of fields stored as JSON strings in Firestore.
-// Avoids drift between three separate inline parse loops in fbListen handlers.
-// Future JSON-stored fields just need to be added here.
-function hydrateJobDoc(doc) {
-  if (!doc || typeof doc !== "object") return doc;
-  const out = {...doc};
-  if (typeof out.inventoryDeductions === "string") {
-    out.inventoryDeductions = safeParse(out.inventoryDeductions);
-  }
-  if (!Array.isArray(out.inventoryDeductions)) out.inventoryDeductions = null;
-  if (typeof out.inventoryUsed === "string") {
-    out.inventoryUsed = safeParse(out.inventoryUsed);
-  }
-  if (!out.inventoryUsed || typeof out.inventoryUsed !== "object") out.inventoryUsed = null;
-  return out;
-}
-function hydrateSettingsDoc(doc) {
-  if (!doc || typeof doc !== "object") return doc;
-  const out = {...doc};
-  Object.keys(out).forEach(k => {
-    const v = out[k];
-    if (typeof v === "string" && (v.startsWith("{") || v.startsWith("["))) {
-      const parsed = safeParse(v);
-      if (parsed && typeof parsed === "object") out[k] = parsed;
-    }
-  });
-  return out;
-}
 async function fbDel(col, id) {
   if (!col) return;
   try { await col.doc(String(id)).delete(); } catch(e) {}
@@ -661,31 +631,10 @@ function fbListen(col, cb) {
   if (!col) { cb([]); return () => {}; }
   // On error: log but DO NOT overwrite local state with empty. Transient network
   // issues would otherwise blank the UI and persist [] back to localStorage.
-  //
-  // PATCH 12: Debounce snapshots by 250ms so a burst of local writes (e.g. inventory restore
-  // on job delete, which writes one doc per restored row) coalesces into a single
-  // re-render instead of multiple flickers as each write echoes back. The trailing
-  // call wins, so the eventual state always matches Firestore.
-  let timer = null;
-  let pendingDocs = null;
-  const unsub = col.onSnapshot(
-    s => {
-      pendingDocs = s.docs.map(d => ({...d.data(), id: d.id}));
-      if (timer) return;
-      timer = setTimeout(() => {
-        const docs = pendingDocs;
-        pendingDocs = null;
-        timer = null;
-        cb(docs);
-      }, 250);
-    },
+  return col.onSnapshot(
+    s => cb(s.docs.map(d => ({...d.data(), id: d.id}))),
     e => console.warn("fbListen error (keeping local state):", e)
   );
-  // Return a wrapper that also cancels any pending coalesce on unsub
-  return () => {
-    if (timer) { clearTimeout(timer); timer = null; }
-    unsub();
-  };
 }
 
 // Returns true when the user is a synthetic local-mode placeholder (no Firebase).
@@ -869,22 +818,6 @@ const VEHICLE_TYPES = ["Car","SUV / Truck","Semi-Truck","Tractor-Trailer"];
 const SERVICE_OPTIONS = SERVICE_KEYS.slice();
 const PAYMENT_OPTIONS = [{label:"Cash",icon:"💵"},{label:"Zelle",icon:"🟣"},{label:"Card",icon:"💳"},{label:"Cash App",icon:"🟢"},{label:"Venmo",icon:"💙"},{label:"Check",icon:"✍️"}];
 const SOURCE_QUICK    = [{label:"Google",icon:"🔍"},{label:"Google Maps",icon:"🗺"},{label:"TikTok",icon:"🎵"},{label:"ChatGPT",icon:"🤖"},{label:"Referral",icon:"🤝"},{label:"Returning Customer",icon:"🔁"},{label:"Roadside Flag",icon:"🚗"}];
-// PATCH 15: Short names for the dashboard Quick Quote chip strip — full names don't fit
-// the 5-chip horizontal layout on small screens. Falls back to full name if not mapped.
-const SERVICE_SHORTNAMES = {
-  "Mobile Tire Service":     "Mobile",
-  "Flat Tire Repair":        "Repair",
-  "Tire Replacement":        "Replace",
-  "Tire Installation":       "Install",
-  "Roadside Assistance":     "Roadside",
-  "Tractor-Trailer Service": "T-Trailer",
-  "Spare Tire Change":       "Spare",
-  "Tire Rotation":           "Rotation",
-  "Jump Start":              "Jump",
-  "Fuel Delivery":           "Fuel",
-  "Lockout Service":         "Lockout",
-};
-const shortService = name => SERVICE_SHORTNAMES[name] || name;
 const FLAGS           = [["emergency","🚨 Emergency",20],["lateNight","🌙 Late Night",20],["highway","🛣 Highway",15],["weekend","📅 Weekend",10]];
 const TOP_CITIES      = ["Miami","Fort Lauderdale","Hollywood","Miramar","Hialeah","Aventura","Doral","Pembroke Pines","Coral Springs","Davie"];
 const DEFAULT_TIRE_SIZES = ["245/40R18","225/65R17","225/60R18","215/55R16","255/50R17","225/55R18","235/40R19","245/50R20","275/35R21","275/40R22","275/50R22","195/60R16"];
@@ -925,11 +858,8 @@ const DEFAULT_SETTINGS = {
     {id:"e5",name:"Storage",amount:160,active:true},{id:"e6",name:"Equipment Payment",amount:232.37,active:true},
   ],
 };
-// FIX: startTime defaults to "" so saveJob's `form.startTime || NOW_HHMM()`
-// fallback fires at save time, not mount time. Previously a tech opening
-// AddJob at 9:15 and saving at 9:45 had "09:15" recorded forever.
 const EMPTY_JOB = () => ({
-  id:"", date:TODAY(), startTime:"", service:"Flat Tire Repair", vehicleType:"Car",
+  id:"", date:TODAY(), startTime:NOW_HHMM(), service:"Flat Tire Repair", vehicleType:"Car",
   area:"Miami", payment:"Cash",
   status:"Completed", source:"Google", customerName:"", customerPhone:"",
   tireSize:"", qty:1, revenue:"", tireCost:"", miscCost:"", miles:"", note:"",
@@ -947,73 +877,6 @@ const monthlyFixed   = s => { const exps=Array.isArray(s.expenses)?s.expenses:[]
 // Single source of truth for "does this service use tires/materials that should be tracked?"
 // Used by validation, deduction gating, and UI visibility of the Tire Source section.
 const isTireMaterialService = svc => /replacement|installation/i.test(String(svc||""));
-
-// ── Customer-supplied install pricing ────────────────────────────────────────
-// When the customer brings their own tires for an Installation job, pricing is a
-// flat tier table — NOT multiplied. This reflects bundled labor where the second,
-// third, fourth tire add less marginal time than a fresh setup each.
-//   1 tire  = $90    (standard mount/balance)
-//   2 tires = $140   (+$50)
-//   3 tires = $190   (+$50)
-//   4 tires = $220   (+$30 — bulk break)
-//   5+      = $220 + $30 per extra tire
-// Tweak these in one place if pricing changes.
-const INSTALL_FLAT_PRICING = {1:90, 2:140, 3:190, 4:220};
-const installFlatTotal = qty => {
-  // FIX: Same NaN-safety as replacementTierTotal — non-numeric input must not
-  // leak through Math.max as NaN.
-  const n = Number(qty);
-  const q = (Number.isFinite(n) && n >= 1) ? Math.floor(n) : 1;
-  if (INSTALL_FLAT_PRICING[q]) return INSTALL_FLAT_PRICING[q];
-  // 5+ tires: extend the 3→4 step ($30 each beyond 4)
-  return INSTALL_FLAT_PRICING[4] + (q - 4) * 30;
-};
-
-// ── We-supply tier table ────────────────────────────────────────────────
-// When Wheel Rush provides the tires (Tire Replacement OR a Tire Installation
-// where source is Inventory or Bought-for-this-job), target profit follows a
-// tier table — NOT per-tire scaling. Reflects real cost structure:
-//   • Wheel Rush is fronting tire inventory
-//   • Mobile service has travel/time risk
-//   • Mounting / balancing / disposal overhead per tire
-//   • 4-tire jobs eat a large time block
-//   • Healthy margin must stay AFTER tire cost is recovered
-//
-// Vehicle add-on STACKS on top.
-//
-//   1 tire  = $120
-//   2 tires = $220
-//   3 tires = $320
-//   4 tires = $400
-//   5+      = $400 + $100/tire above 4 (steeper slope to protect fleet margin)
-//
-// To change tier values, edit this object only.
-const REPLACEMENT_TIER_PRICING = {1:120, 2:220, 3:320, 4:400};
-const replacementTierTotal = qty => {
-  // FIX: Number("abc") is NaN, Math.max(1, NaN) is NaN, which leaks into
-  // suggested price as "$NaN.00". Explicit isFinite guard returns the
-  // 1-tire fallback for any non-numeric input.
-  const n = Number(qty);
-  const q = (Number.isFinite(n) && n >= 1) ? Math.floor(n) : 1;
-  if (REPLACEMENT_TIER_PRICING[q]) return REPLACEMENT_TIER_PRICING[q];
-  // 5+ tires: $100 per tire above 4
-  return REPLACEMENT_TIER_PRICING[4] + (q - 4) * 100;
-};
-
-// True when this job uses the we-supply tier table (NOT customer-supplied,
-// NOT a non-tire service).
-const isWeSupplyTireJob = j => {
-  if (!j) return false;
-  if (!isTireMaterialService(j.service)) return false;
-  if (isCustomerSuppliedInstall(j)) return false;
-  return true;
-};
-
-// True only when this is an Installation job AND the customer brought their own tires.
-// This is the trigger for flat-tier pricing instead of per-tire scaling.
-const isCustomerSuppliedInstall = j =>
-  /installation/i.test(String(j && j.service || "")) &&
-  String(j && j.tireSource || "") === "Customer supplied";
 // ── Distance premium (tiered) ────────────────────────────────────────────────
 // 0-10 mi:+$0 · 10-25 mi:+$15 · 25+ mi:+$35 (new tiered rule, replaces flat +$20>25)
 function distancePremium(miles) {
@@ -1056,24 +919,9 @@ function calculateJobPricing(job, settings) {
 
   // Guard against negatives. Prevents user-typed -5 miles producing a lower price than 0 miles.
   const miles       = Math.max(0, Number(j.miles || 0));
-  // PATCH 1: Tire cost in the input is per-tire (matches what the vendor invoice shows).
-  // Multiply by qty so a 4-tire install at $80/tire correctly costs $320, not $80.
-  // Misc cost is per-job (shop supplies, valve stems, etc.) and does NOT scale.
-  const qty         = Math.max(1, Number(j.qty || 1));
-  // FIX: Customer-supplied installs MUST NOT charge tireCost — customer brought
-  // the tires. UI defaults the field to $0 but a clone or stale form state
-  // can carry tireCost over from a we-supply job. Engine enforces zero here
-  // so internal cost reports never reflect a tire we didn't actually buy.
-  const tireCost    = isCustomerSuppliedInstall(j)
-    ? 0
-    : Math.max(0, Number(j.tireCost || 0)) * qty;
+  const tireCost    = Math.max(0, Number(j.tireCost || 0));
   const miscCost    = Math.max(0, Number(j.miscCost || 0));
-  // FIX: Suppress travel cost when miles ≤ 1. Trivial distances were causing
-  // the suggested price to round UP by $5 (e.g. customer-supplied install
-  // showed $225 instead of $220 when 1 mile entered). At ≤1 mile, treat as
-  // "on-site / no real travel" and zero out travel cost.
-  const trivialDistance = miles <= 1;
-  const travelCost  = trivialDistance ? 0 : r2(miles * costPerMile);
+  const travelCost  = r2(miles * costPerMile);
   const directCost  = r2(tireCost + miscCost + travelCost);
   const revenue     = Math.max(0, Number(j.revenue || 0));
   const actualProfit= r2(revenue - directCost);
@@ -1086,29 +934,7 @@ function calculateJobPricing(job, settings) {
   const baseTarget = (svcRule && svcRule.minProfit != null && !isNaN(Number(svcRule.minProfit)))
     ? Number(svcRule.minProfit)
     : Number(s.defaultTargetProfit || 100);
-  // Three pricing branches, picked by service + tire source:
-  //
-  //   A. Installation + customer-supplied tires → FLAT TIER table
-  //      (1=$90, 2=$140, 3=$190, 4=$220, 5+:+$30 each)
-  //      Bundled labor — installing four tires isn't 4× the work of one.
-  //
-  //   B. Replacement / Installation we supply → TIER TABLE
-  //      (1=$120, 2=$220, 3=$320, 4=$400, 5+:+$100 each)
-  //      Vehicle add-on stacks on top. Settings minProfit IGNORED.
-  //
-  //   C. Repairs, roadside, rotations, etc. → FLAT target, no qty scaling
-  //      Per-job regardless of tire count.
-  const isFlatInstall = isCustomerSuppliedInstall(j);
-  const isWeSupply    = isWeSupplyTireJob(j);
-
-  let targetProfit;
-  if (isFlatInstall) {
-    targetProfit = installFlatTotal(qty) + vehicleAdd;            // A
-  } else if (isWeSupply) {
-    targetProfit = replacementTierTotal(qty) + vehicleAdd;        // B
-  } else {
-    targetProfit = baseTarget + vehicleAdd;                       // C
-  }
+  const targetProfit = baseTarget + vehicleAdd;
 
   const distanceAdj   = distancePremium(miles);
   const urgencyBase   = premiums(j);
@@ -1154,8 +980,11 @@ function calculateJobPricing(job, settings) {
 function suggestedPrice(j, s) {
   return calculateJobPricing(j, s).suggestedPrice;
 }
+// Friday-start work week (Fri through Thu). Wheel Rush operates on this schedule
+// for payouts and weekly reporting. Do NOT change without explicit business decision.
 function getWeekStart(d) {
   const dt = new Date(d+"T12:00:00"), day = dt.getDay();
+  // Friday=5: Sun(0)→back 2, Mon(1)→back 3, Tue(2)→back 4, Wed(3)→back 5, Thu(4)→back 6, Fri(5)→back 0, Sat(6)→back 1
   dt.setDate(dt.getDate()-(day>=5?day-5:day+2));
   return dt.toLocaleDateString("en-CA",{timeZone:"America/New_York"});
 }
@@ -1163,19 +992,17 @@ function weekLabel(s) {
   const d = new Date(s+"T12:00:00"), e = new Date(d);
   e.setDate(e.getDate()+6);
   const f = dt => dt.toLocaleDateString("en-US",{timeZone:"America/New_York",month:"short",day:"numeric"});
-  return f(d)+" – "+f(e)+", "+e.toLocaleDateString("en-US",{timeZone:"America/New_York",year:"numeric"}).split("/")[2];
+  // year:"numeric" alone returns just "2026" (not "5/14/2026"), so use the result directly.
+  // Previous code did .split("/")[2] which produced undefined → "May 8 – May 14, undefined".
+  const year = e.toLocaleDateString("en-US",{timeZone:"America/New_York",year:"numeric"});
+  return f(d)+" – "+f(e)+", "+year;
 }
 function nextFriday() {
-  // PATCH 10: Returns the next *upcoming* Friday strictly in the future. On Fridays, this is
-  // 7 days out — not today. The dashboard's weekly goal resets on Friday, and showing
-  // "today" as the deadline makes Friday-evening reviews confusing.
   const now = new Date();
   const dayStr = now.toLocaleDateString("en-US",{timeZone:"America/New_York",weekday:"short"});
   const dm = {Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
   const day = dm[dayStr.slice(0,3)];
-  // Push to next Friday in all cases. On Friday that's +7. On Saturday +6. On Thursday +1.
-  const offset = day === 5 ? 7 : ((5 - day + 7) % 7);
-  const fri = new Date(now); fri.setDate(fri.getDate() + offset);
+  const fri = new Date(now); fri.setDate(fri.getDate()+(day===5?7:(5-day+7)%7));
   return fri.toLocaleDateString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric"});
 }
 function groupByWeek(jobs) {
@@ -1190,7 +1017,9 @@ function monthLabel(key) {
   // key = "YYYY-MM"
   const [y,m] = String(key||"").split("-");
   if (!y || !m) return key || "";
-  const dt = new Date(Number(y), Number(m)-1, 1);
+  // Use noon UTC on the 15th to avoid any timezone-rollover ambiguity.
+  // Midnight on the 1st can display as "previous month" in some timezones.
+  const dt = new Date(Date.UTC(Number(y), Number(m)-1, 15, 12, 0, 0));
   return dt.toLocaleDateString("en-US",{timeZone:"America/New_York",month:"long",year:"numeric"});
 }
 function groupByMonth(jobs) {
@@ -1246,22 +1075,6 @@ function sanitizeJob(j) {
   if (j === null || j === undefined || typeof j !== "object") j = {};
   const src = String(j.tireSource||"Inventory");
   const validSrc = ["Inventory","Bought for this job","Customer supplied"].includes(src) ? src : "Inventory";
-
-  // PATCH 4: Preserve inventory deduction markers so JSON import + edit/delete still
-  // restore stock correctly. Deductions may arrive as a JSON string from
-  // Firestore, an array from local state, or undefined on legacy/imported jobs.
-  let inventoryDeductions = j.inventoryDeductions;
-  if (typeof inventoryDeductions === "string") {
-    try { inventoryDeductions = JSON.parse(inventoryDeductions); } catch { inventoryDeductions = null; }
-  }
-  if (!Array.isArray(inventoryDeductions)) inventoryDeductions = null;
-
-  let inventoryUsed = j.inventoryUsed;
-  if (typeof inventoryUsed === "string") {
-    try { inventoryUsed = JSON.parse(inventoryUsed); } catch { inventoryUsed = null; }
-  }
-  if (!inventoryUsed || typeof inventoryUsed !== "object") inventoryUsed = null;
-
   return {
     id: String(j.id||uid()), date: String(j.date||TODAY()), startTime: String(j.startTime||""), service: String(j.service||"Flat Tire Repair"),
     vehicleType: String(j.vehicleType||"Car"),
@@ -1277,12 +1090,6 @@ function sanitizeJob(j) {
     tireVendor: String(j.tireVendor||""),
     saveToInventory: !!j.saveToInventory,
     inventoryItemId: String(j.inventoryItemId||""),
-    // PATCH 4: Inventory deduction history — preserved across imports and clones so
-    // that delete/edit can correctly restore stock on legacy data.
-    inventoryDeducted: !!j.inventoryDeducted,
-    inventoryDeductions: inventoryDeductions,
-    inventoryShortfall: Number(j.inventoryShortfall||0),
-    inventoryUsed: inventoryUsed,
   };
 }
 function sanitizeInvItem(i) {
@@ -1581,21 +1388,13 @@ function CityInput({value,onChange}) {
 // ── QuickQuote ────────────────────────────────────────────────────────────────
 function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode}) {
   const customRef=useRef(null);
-  // FIX: Tier-priced services (customer-supplied installs, we-supply
-  // replacements/installations) have a meaningful price with zero variable
-  // costs. Show suggested price as soon as service + qty are picked, no
-  // need to require miles/tireCost entry.
-  const isTierPriced = isCustomerSuppliedInstall(form) || isWeSupplyTireJob(form);
-  const hasInputs = isTierPriced
-    || Number(form.miles||0)>0
-    || Number(form.tireCost||0)>0
-    || Number(form.miscCost||0)>0;
+  const hasInputs=Number(form.miles||0)>0||Number(form.tireCost||0)>0||Number(form.miscCost||0)>0;
 
   // SINGLE SOURCE OF TRUTH — all numbers come from the engine.
   const calc = calculateJobPricing(form, settings);
   const { directCost, suggestedPrice:suggested, premiumPrice, urgencyPremium:prem,
           travelCost, tireCost, miscCost, distanceAdj, vehicleAdd,
-          baseTarget, targetProfit, decisionLabel, decisionType } = calc;
+          baseTarget, decisionLabel, decisionType } = calc;
 
   const skip = Number(settings.skipThreshold||70);
   // Displayed price depends on mode — but profit is always recomputed from the active price.
@@ -1604,17 +1403,14 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
                   : suggested;
   const profit = r2(dispPrice - directCost);
 
-  // PATCH 6: When user hasn't entered revenue, use engine decision. Otherwise classify against skip threshold.
-  // Negative profit gets a distinct "Loss" label — "low margin" understates a job that loses money.
+  // When user hasn't entered revenue, use engine decision. Otherwise classify against skip threshold.
   const liveDec = priceMode==="custom" && Number(form.revenue||0)>0
-    ? (profit < 0 ? {label:"⚠ Loss — you'd lose " + money(Math.abs(profit)), type:"loss"}
-      : profit<skip ? {label:"Low margin — increase price", type:"low"}
+    ? (profit<skip ? {label:"Low margin — increase price", type:"low"}
       : profit>=skip+40 ? {label:"Strong profit — take it", type:"strong"}
       : {label:"Take it", type:"take"})
     : { label: decisionLabel, type: decisionType };
-  // Map internal decision types → existing CSS badge classes.
-  // "loss" reuses the red "low" badge style — most attention-grabbing color we have.
-  const badgeCls = liveDec.type==="loss" || liveDec.type==="low" || liveDec.type==="missing" ? "low"
+  // Map internal decision types → existing CSS badge classes
+  const badgeCls = liveDec.type==="low" || liveDec.type==="missing" ? "low"
                  : liveDec.type==="strong" ? "take"
                  : "take";
 
@@ -1642,7 +1438,7 @@ function QuickQuote({form,settings,onApply,onFormChange,priceMode,setPriceMode})
           ${prem>0&&html`<div style=${{width:1,background:"var(--border)"}}/><div style=${{textAlign:"center"}}><div style=${{fontSize:10,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Premium</div><div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:15,fontWeight:700,color:"#fb923c"}}>+${money(prem)}</div></div>`}
         </div>
         ${priceMode!=="custom"&&html`<div style=${{fontSize:10,color:"var(--t3)",textAlign:"center",marginBottom:8,fontFamily:'"IBM Plex Mono",monospace',letterSpacing:".2px"}}>
-          ${"Target "+money(targetProfit - vehicleAdd)}${travelCost>0?" + Travel "+money(travelCost):""}${tireCost>0?" + Tire "+money(tireCost):""}${miscCost>0?" + Misc "+money(miscCost):""}${vehicleAdd>0?" + Vehicle "+money(vehicleAdd):""}${distanceAdj>0?" + Distance "+money(distanceAdj):""}${(prem-distanceAdj)>0?" + Urgency "+money(prem-distanceAdj):""}
+          ${"Target "+money(baseTarget)}${travelCost>0?" + Travel "+money(travelCost):""}${tireCost>0?" + Tire "+money(tireCost):""}${miscCost>0?" + Misc "+money(miscCost):""}${vehicleAdd>0?" + Vehicle "+money(vehicleAdd):""}${distanceAdj>0?" + Distance "+money(distanceAdj):""}${(prem-distanceAdj)>0?" + Urgency "+money(prem-distanceAdj):""}
         </div>`}
         <span class=${"qq-dec-badge "+badgeCls}>${liveDec.label}</span>
       </div>
@@ -1667,7 +1463,7 @@ function AuthScreen({onAuth}) {
   const submit=async()=>{
     if(!email||!pass){setErr("Enter your email and password.");return;}
     setBusy(true);setErr("");
-    try{const c=await _auth.signInWithEmailAndPassword(email,pass);onAuth(c.user);}
+    try{const c=mode==="login"?await _auth.signInWithEmailAndPassword(email,pass):await _auth.createUserWithEmailAndPassword(email,pass);onAuth(c.user);}
     catch(e){setErr(e.message||"Auth failed.");}finally{setBusy(false);}
   };
   const google=async()=>{try{const c=await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());onAuth(c.user);}catch(e){setErr(e.message);}};
@@ -1681,14 +1477,14 @@ function AuthScreen({onAuth}) {
       ${err&&html`<div style=${{background:"var(--red-dim)",border:"1px solid rgba(239,68,68,.3)",color:"#f87171",padding:"12px 16px",borderRadius:12,fontSize:13,fontWeight:600,marginBottom:16}}>${err}</div>`}
       <div class="auth-field"><label class="auth-label">Email</label><input class="auth-inp2" type="email" placeholder="you@email.com" value=${email} onChange=${e=>setEmail(e.target.value)} autoCapitalize="off"/></div>
       <div class="auth-field" style=${{marginBottom:20}}><label class="auth-label">Password</label><input class="auth-inp2" type="password" placeholder="••••••••" value=${pass} onChange=${e=>setPass(e.target.value)} onKeyDown=${e=>e.key==="Enter"&&submit()}/></div>
-      <button class="auth-btn-main press-scale" onClick=${submit} disabled=${busy}>${busy?"Working…":"Sign In"}</button>
+      <button class="auth-btn-main press-scale" onClick=${submit} disabled=${busy}>${busy?"Working…":mode==="login"?"Sign In":"Create Account"}</button>
       <button class="auth-btn-google press-scale" onClick=${google}>
         <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
         Continue with Google
       </button>
-      <div style=${{textAlign:"center",fontSize:12,color:"#444",padding:"8px"}}>
-        Owner access only · Contact admin
-      </div>
+      <div style=${{textAlign:"center"}}><button style=${{background:"none",border:"none",color:"#444",fontSize:13,cursor:"pointer",padding:"8px"}} onClick=${()=>{setMode(m=>m==="login"?"signup":"login");setErr("");}}>
+        ${mode==="login"?"New here? Create account":"Have an account? Sign in"}
+      </button></div>
     </div>
   </div>`;
 }
@@ -1763,32 +1559,18 @@ function CallCounter({jobsToday}) {
 }
 
 function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
-// FIX: Default tireSource to "Customer supplied" so Quick Quote installs
-  // use the flat-tier pricing table (1=$90, 2=$140, 3=$190, 4=$220) instead
-  // of falling into per-tire scaling that overcharged customer-supplied jobs.
-  const [qqForm,setQqForm]=useState({
-    service:"Flat Tire Repair",
-    vehicleType:"Car",
-    tireSource:"Customer supplied",
-    miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",
-    emergency:false,lateNight:false,highway:false,weekend:false
-  });  const [qqMode,setQqMode]=useState("suggested");
+  const [qqForm,setQqForm]=useState({service:"Flat Tire Repair",vehicleType:"Car",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});
+  const [qqMode,setQqMode]=useState("suggested");
   const qqChange=(k,v)=>setQqForm(p=>({...p,[k]:v}));
   const qqApply=price=>setQqForm(p=>({...p,revenue:price}));
   const safeJobs=Array.isArray(jobs)?jobs:[];
   const today=TODAY(),thisWeek=getWeekStart(today);
   const weekJobs=useMemo(()=>safeJobs.filter(j=>getWeekStart(j.date)===thisWeek),[safeJobs,thisWeek]);
   const todayJobs=useMemo(()=>safeJobs.filter(j=>j.date===today),[safeJobs,today]);
-  // PATCH 9: Split the week into earned (collected) vs pending (still owed). The hero shows
-  // earned only — that's the money you can actually count on for payouts.
-  // Pending is shown as a secondary line so the tech can see what's still out there.
-  const earnedJobs    = useMemo(()=>weekJobs.filter(j=>j.status!=="Pending"),[weekJobs]);
-  const pendingWk     = useMemo(()=>weekJobs.filter(j=>j.status==="Pending"),[weekJobs]);
-  const totals        = useMemo(()=>weekSummary(earnedJobs,settings),[earnedJobs,settings]);
-  const pendingProfit = useMemo(()=>pendingWk.reduce((s,j)=>s+jobGrossProfit(j,settings),0),[pendingWk,settings]);
-  const avgProfit     = earnedJobs.length?r2(totals.grossProfit/earnedJobs.length):0;
-  const goalPct       = clamp((totals.grossProfit/(settings.weeklyGoal||1))*100,0,100);
-  const jobsNeeded    = avgProfit>0?Math.max(0,Math.ceil(((settings.weeklyGoal||0)-totals.grossProfit)/avgProfit)):"—";
+  const totals=useMemo(()=>weekSummary(weekJobs,settings),[weekJobs,settings]);
+  const avgProfit=weekJobs.length?r2(totals.grossProfit/weekJobs.length):0;
+  const goalPct=clamp((totals.grossProfit/(settings.weeklyGoal||1))*100,0,100);
+  const jobsNeeded=avgProfit>0?Math.max(0,Math.ceil(((settings.weeklyGoal||0)-totals.grossProfit)/avgProfit)):"—";
   const sources=useMemo(()=>{const m={};safeJobs.forEach(j=>{const s=j.source||"Other";m[s]=(m[s]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);},[safeJobs]);
   const maxSrc=sources.length?sources[0][1]:1;
   const recent=useMemo(()=>[...safeJobs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5),[safeJobs]);
@@ -1857,11 +1639,8 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
             <span class="currency">$</span>${Math.floor(animatedProfit).toLocaleString()}
           </div>
           <div class="t-meta" style=${{marginTop:10,color:"var(--t3)"}}>
-            earned · ${earnedJobs.length} paid job${earnedJobs.length!==1?"s":""} · ${money(totals.revenue)} rev
+            gross profit · ${weekJobs.length} job${weekJobs.length!==1?"s":""} · ${money(totals.revenue)} rev
           </div>
-          ${pendingProfit>0 && html`<div class="t-meta" style=${{marginTop:4,color:"var(--gold)",fontWeight:700}}>
-            + ${money(pendingProfit)} pending · ${pendingWk.length} job${pendingWk.length!==1?"s":""} to collect
-          </div>`}
         </div>
         <${ProgressRing} size=${88} stroke=${6} pct=${goalPct} color=${ringColor}>
           <div class="num" style=${{fontSize:18,fontWeight:700,color:"var(--t1)",letterSpacing:"-1px",lineHeight:1}}>${Math.round(goalPct)}%</div>
@@ -1897,21 +1676,14 @@ function Dashboard({jobs,settings,setTab,onRepeat,inventory,onStartJob}) {
     <div class="card-anim">
       <div class="section-label" style=${{marginTop:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <span>Quick Quote</span>
-${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{
-          if(onStartJob)onStartJob(qqForm);
-          setQqForm({
-            service:"Flat Tire Repair",vehicleType:"Car",tireSource:"Customer supplied",
-            miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",
-            emergency:false,lateNight:false,highway:false,weekend:false
-          });
-          setQqMode("suggested");
-        }}>Start Job →</button>`}      </div>
+        ${Number(qqForm.revenue||0)>0&&html`<button class="btn primary sm press-scale" style=${{fontSize:11,padding:"4px 12px"}} onClick=${()=>{if(onStartJob)onStartJob(qqForm);setQqForm({service:"Flat Tire Repair",vehicleType:"Car",miles:"",tireCost:"",miscCost:"",qty:1,revenue:"",emergency:false,lateNight:false,highway:false,weekend:false});setQqMode("suggested");}}>Start Job →</button>`}
+      </div>
       <div style=${{marginBottom:4}}>
         <div style=${{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
           ${SERVICE_KEYS.filter(s=>{
             const sp=(settings.servicePricing||{})[s]||DEFAULT_SERVICE_PRICING[s];
             return sp && sp.enabled!==false && s!=="Other";
-          }).slice(0,5).map(s=>html`<button key=${s} type="button" class=${"chip press-scale"+(qqForm.service===s?" active":"")} onClick=${()=>qqChange("service",s)} style=${{fontSize:11,padding:"5px 10px"}}>${shortService(s)}</button>`)}
+          }).slice(0,5).map(s=>html`<button key=${s} type="button" class=${"chip press-scale"+(qqForm.service===s?" active":"")} onClick=${()=>qqChange("service",s)} style=${{fontSize:11,padding:"5px 10px"}}>${s.replace("Mobile Tire Service","Mobile").replace("Flat Tire Repair","Repair").replace("Tire Replacement","Replace").replace("Tire Installation","Install").replace("Roadside Assistance","Roadside").replace("Tractor-Trailer Service","T-Trailer").replace("Spare Tire Change","Spare").replace("Tire Rotation","Rotation").replace("Jump Start","Jump").replace("Fuel Delivery","Fuel").replace("Lockout Service","Lockout")}</button>`)}
         </div>
         <div style=${{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
           ${VEHICLE_TYPES.map(v=>html`<button key=${v} type="button" class=${"chip press-scale"+(qqForm.vehicleType===v?" active":"")} onClick=${()=>qqChange("vehicleType",v)} style=${{fontSize:11,padding:"5px 10px"}}>${v}</button>`)}
@@ -2044,23 +1816,18 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
     setPhoneMatch(hits[0] || null);
   }, [form.customerPhone, jobs, editingId, phoneMatchDismissed]);
 
-  // PATCH 5: Apply prior customer data. Only auto-fill the customer NAME — tire size
-  // and vehicle type may have changed since their last visit (new car, new tires).
-  // The hint shown in the toast surfaces the prior info without overwriting current input.
+  // Apply prior customer data: name, vehicle, tire size. Preserves current pricing.
   const applyPhoneMatch = () => {
     if (!phoneMatch) return;
     setForm(p => ({
       ...p,
       customerName: phoneMatch.customerName || p.customerName,
+      vehicleType:  phoneMatch.vehicleType  || p.vehicleType,
+      tireSize:     phoneMatch.tireSize     || p.tireSize,
     }));
     setPhoneMatch(null);
     setPhoneMatchDismissed(true);
-    try {
-      if (window.toast) {
-        const hint = [phoneMatch.tireSize, phoneMatch.vehicleType].filter(Boolean).join(" · ");
-        window.toast("Name filled" + (hint ? " — last visit: " + hint : ""), "success");
-      }
-    } catch(e){}
+    try { if(window.toast) window.toast("Customer info filled in", "success"); } catch(e){}
   };
   useEffect(()=>{
     if(editJob&&editJob.id){
@@ -2078,14 +1845,12 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
   const setF=(k,v)=>{
     setForm(p=>{
       const next={...p,[k]:v};
-      // FIX: tireCost stored as PER-TIRE — calculateJobPricing multiplies by qty
-      // internally. Storing total here caused qty² scaling (4 tires @ $50 = $800
-      // direct cost in engine instead of $200).
       if (k === "qty" && next.inventoryItemId && next.tireSource === "Inventory") {
         const safeInv = Array.isArray(inventory) ? inventory : [];
         const item = safeInv.find(i => i.id === next.inventoryItemId);
         if (item && Number(item.cost||0) > 0) {
-          next.tireCost = String(Number(item.cost));   // per-tire, NOT × qty
+          const newQty = Math.max(1, Number(v||1));
+          next.tireCost = String(Number(item.cost) * newQty);
         }
       }
       return next;
@@ -2093,48 +1858,20 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
     setError("");
   };
   const useLastJob=()=>{if(!lastJob)return;setForm({...EMPTY_JOB(),service:lastJob.service,vehicleType:lastJob.vehicleType||"Car",area:lastJob.area,payment:lastJob.payment,source:lastJob.source||"Google",tireSize:lastJob.tireSize,tireCost:String(lastJob.tireCost||""),miscCost:String(lastJob.miscCost||""),miles:String(lastJob.miles||""),emergency:lastJob.emergency,lateNight:lastJob.lateNight,highway:lastJob.highway,weekend:lastJob.weekend});};
-  // PATCH 13: Scroll the screen container to the top so the user sees errors that
-  // appear above the form when they tap Save from the sticky-save bar.
-  const scrollToError = () => {
-    try {
-      const el = document.querySelector('.screen');
-      if (el && el.parentElement) el.parentElement.scrollTo({top:0, behavior:"smooth"});
-      haptic(8);
-    } catch(e) {}
-  };
-
   const doSave=async(andAdd=false)=>{
-    const rev=Number(form.revenue||0);if(!rev){setError("Enter the job price.");scrollToError();return;}
+    const rev=Number(form.revenue||0);if(!rev){setError("Enter the job price.");return;}
 
     // Tire source validation (only for tire-material services like Replacement/Installation)
     if (isTireMaterialService(form.service)) {
       const src = form.tireSource;
       const tcost = Number(form.tireCost || 0);
-
-      // AUDIT FIX #2: Tire size is required on any installation/replacement job —
-      // it ends up on the PDF invoice, drives inventory matching, and prevents
-      // silent "blank tire size" jobs that confuse the customer record.
-      const sizeTyped = String(form.tireSize||"").trim();
-      if (!sizeTyped) {
-        setError("Enter the tire size (e.g. 225/55R17)");
-        scrollToError();
-        return;
-      }
-      if (!normalizeTireSize(sizeTyped)) {
-        setError("Tire size format unclear — should look like 225/55R17");
-        scrollToError();
-        return;
-      }
-
       if (src === "Bought for this job" && tcost <= 0) {
         setError("Enter tire cost for this job");
-        scrollToError();
         return;
       }
       // If user chose Inventory but didn't pick a specific row, require selection
       if (src === "Inventory" && !form.inventoryItemId) {
         setError("Select inventory tire");
-        scrollToError();
         return;
       }
     }
@@ -2262,21 +1999,7 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
             window.open("https://maps.google.com/?q=" + q, "_blank");
           }} style=${{marginTop:8,background:"var(--s2)",color:"var(--t1)",border:"1px solid var(--border)",borderRadius:6,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}}>📍 Open in Maps</button>`}
         </div>
-        <div class="field"><label>Tire Size</label>
-          <input value=${form.tireSize} onChange=${e=>setF("tireSize",e.target.value)} placeholder="225/55R17"/>
-          ${(()=>{
-            // PATCH 11: Show a soft hint when the user has typed something but it doesn't parse.
-            // Don't show on empty input — that's just an unfilled field, not an error.
-            const typed = String(form.tireSize||"").trim();
-            if (typed.length < 3) return null;
-            const norm = normalizeTireSize(typed);
-            if (norm) return null; // parses fine; no hint needed
-            return html`<div style=${{fontSize:11,color:"var(--amber)",marginTop:6,fontWeight:600,padding:"6px 10px",background:"var(--amber-dim)",borderRadius:8}}>
-              ⚠ Format unclear — should look like <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700}}>225/55R17</span>
-            </div>`;
-          })()}
-          <div class="chip-row" style=${{marginTop:8}}>${recentSizes.map(sz=>html`<button type="button" key=${sz} class=${"chip sm"+(form.tireSize===sz?" active":"")} onClick=${()=>setF("tireSize",sz)}>${sz}</button>`)}</div>
-        </div>
+        <div class="field"><label>Tire Size</label><input value=${form.tireSize} onChange=${e=>setF("tireSize",e.target.value)} placeholder="225/55R17"/><div class="chip-row" style=${{marginTop:8}}>${recentSizes.map(sz=>html`<button type="button" key=${sz} class=${"chip sm"+(form.tireSize===sz?" active":"")} onClick=${()=>setF("tireSize",sz)}>${sz}</button>`)}</div></div>
       </div>
 
       ${isTireMaterialService(form.service) && html`<div class="form-group card-anim">
@@ -2340,11 +2063,11 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
                   const sub = [i.brand,i.model].filter(s=>s&&s.trim()).join(" ");
                   const tread = String(i.treadDepth||"").trim();
                   return html`<button key=${i.id} type="button" class="press-scale"
-                   onClick=${()=>{
+                    onClick=${()=>{
                       const changes={inventoryItemId:i.id};
-                      // Auto-fill tire cost (per-tire). Engine multiplies by qty internally.
+                      // Auto-fill tire cost if not yet set
                       if(Number(i.cost||0)>0 && (!form.tireCost || Number(form.tireCost)===0)){
-                        changes.tireCost = String(Number(i.cost||0));  // per-tire, NOT × qty
+                        changes.tireCost = String(Number(i.cost||0) * Math.max(1,Number(form.qty||1)));
                       }
                       if(i.brand && !form.tireBrand) changes.tireBrand = i.brand;
                       if(i.model && !form.tireModel) changes.tireModel = i.model;
@@ -2395,14 +2118,6 @@ function AddJob({onSave,settings,jobs,inventory,prefill,onClearPrefill,editJob,o
         ${/* CUSTOMER: just a gentle reminder */ ""}
         ${form.tireSource==="Customer supplied" && html`<div style=${{fontSize:12,color:"var(--t3)",padding:"8px 12px",background:"var(--s2)",border:"1px solid var(--border)",borderRadius:10}}>
           Customer brought their own tire. Tire cost defaults to $0; no inventory is deducted.
-        </div>`}
-
-        ${/* AUDIT FIX #1: Tire Replacement + Customer supplied is contradictory.
-            Replacement = we provide the tires. If customer brought tires, that's an Installation.
-            We don't auto-flip the service (that'd surprise the user); we suggest it. */ ""}
-        ${form.tireSource==="Customer supplied" && /replacement/i.test(String(form.service||"")) && html`<div style=${{fontSize:12,color:"var(--amber)",fontWeight:600,padding:"10px 12px",background:"var(--amber-dim)",border:"1px solid rgba(245,158,11,.3)",borderRadius:10,marginTop:8,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-          <span>⚠ Customer-supplied + Replacement looks wrong. This should usually be <b>Tire Installation</b> for flat-tier pricing.</span>
-          <button type="button" class="btn sm press-scale" style=${{background:"var(--amber)",color:"#0a0a0f",border:"none",padding:"6px 12px",fontSize:11,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}} onClick=${()=>setF("service","Tire Installation")}>Switch</button>
         </div>`}
       </div>`}
 
@@ -2924,14 +2639,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
   const [view,    setView]    = useState('list');   // 'list' | 'new'
   const [tab,     setTab]     = useState('All');    // 'All' | 'New' | 'Used' | 'Low'
 
-  // ── Admin actions state ──────────────────────────────────────────────────
-  // Delete-all confirmation modal
-  const [showDeleteModal, setShowDeleteModal]   = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  // Bulk upload preview modal — null = not previewing, else { valid:[], skipped:[], totalRows, fileName }
-  const [bulkPreview, setBulkPreview] = useState(null);
-  const fileInputRef = useRef(null);
-
   // New Tire form state — separate from list, only lives while view==='new'
   const EMPTY_NEW = {size:'',brand:'',model:'',condition:'New',qty:'1',cost:'',sellPrice:'',notes:'',treadDepth:'',dotCode:''};
   const [nt, setNt] = useState(EMPTY_NEW);
@@ -2945,260 +2652,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
     }
   }, [view]);
 
-  // ── CSV parser shared by parse + preview ─────────────────────────────────
-  // Accepts the raw text and returns { valid:[item], skipped:[{line,reason}], totalRows }.
-  // Required: tireSize. Defaults: quantity=1, condition=used, cost=0.
-  // Smart-merge happens later in confirmBulkImport.
-  function parseInventoryCsv(text) {
-    function splitCsvLine(line) {
-      const out=[]; let cur=""; let inQ=false;
-      for(let i=0;i<line.length;i++){
-        const ch=line[i];
-        if(inQ){
-          if(ch==='"' && line[i+1]==='"'){ cur+='"'; i++; }
-          else if(ch==='"'){ inQ=false; }
-          else cur+=ch;
-        } else {
-          if(ch===','){ out.push(cur); cur=""; }
-          else if(ch==='"'){ inQ=true; }
-          else cur+=ch;
-        }
-      }
-      out.push(cur);
-      return out.map(s=>s.trim());
-    }
-
-    const lines = text.replace(/\r\n/g, "\n").split("\n").filter(l => l.trim());
-    if (lines.length < 2) throw new Error('CSV needs a header row and at least one data row');
-
-    const headers = splitCsvLine(lines[0]).map(h => h.toLowerCase().trim());
-    const headerMap = {};
-    headers.forEach((h, i) => {
-      // tireSize aliases
-      if (h === "tiresize" || h === "tire size" || h === "size") headerMap.tireSize = i;
-      // quantity aliases
-      else if (h === "quantity" || h === "qty" || h === "stock" || h === "count") headerMap.quantity = i;
-      // condition aliases
-      else if (h === "condition" || h === "cond") headerMap.condition = i;
-      // cost aliases
-      else if (h === "cost" || h === "cost price" || h === "cost ea" || h === "cost each") headerMap.cost = i;
-      // optional
-      else if (h === "brand" || h === "make") headerMap.brand = i;
-      else if (h === "model") headerMap.model = i;
-      else if (h === "treaddepth" || h === "tread depth" || h === "tread") headerMap.treadDepth = i;
-      else if (h === "notes" || h === "note" || h === "comment") headerMap.notes = i;
-      else if (h === "sellprice" || h === "sell price" || h === "sell" || h === "price" || h === "retail") headerMap.sellPrice = i;
-    });
-
-    if (headerMap.tireSize === undefined) {
-      throw new Error('CSV needs a "tireSize" column. Found: ' + headers.join(", "));
-    }
-
-    const skipped = [];
-    const valid = [];
-    const dataLines = lines.slice(1);
-
-    dataLines.forEach((line, idx) => {
-      const lineNum = idx + 2; // 1-based, +1 for header
-      const cells = splitCsvLine(line);
-
-      // tireSize is REQUIRED
-      const sizeRaw = String(cells[headerMap.tireSize] || "").trim();
-      if (!sizeRaw) {
-        skipped.push({ line: lineNum, reason: "Missing tireSize" });
-        return;
-      }
-      const sizeNorm = normalizeTireSize(sizeRaw);
-      if (!sizeNorm) {
-        skipped.push({ line: lineNum, reason: "Invalid tireSize: " + sizeRaw });
-        return;
-      }
-
-      // quantity — default 1, also default if not a positive number
-      let qty = 1;
-      if (headerMap.quantity !== undefined) {
-        const q = Number(cells[headerMap.quantity]);
-        qty = (Number.isFinite(q) && q > 0) ? Math.floor(q) : 1;
-      }
-
-      // condition — default "used", normalize to canonical "New"/"Used"
-      let condition = 'Used';
-      if (headerMap.condition !== undefined) {
-        const c = String(cells[headerMap.condition] || "").trim().toLowerCase();
-        if (c === 'new') condition = 'New';
-        else if (c === 'used' || c === '') condition = 'Used';
-        else condition = 'Used'; // unknown values default to used per spec
-      }
-
-      // cost — default 0
-      let cost = 0;
-      if (headerMap.cost !== undefined) {
-        const c = Number(cells[headerMap.cost]);
-        cost = Number.isFinite(c) && c >= 0 ? c : 0;
-      }
-
-      // optional
-      const brand = headerMap.brand !== undefined ? String(cells[headerMap.brand] || "").trim() : "";
-      const model = headerMap.model !== undefined ? String(cells[headerMap.model] || "").trim() : "";
-      const treadDepth = headerMap.treadDepth !== undefined ? String(cells[headerMap.treadDepth] || "").trim() : "";
-      const notes = headerMap.notes !== undefined ? String(cells[headerMap.notes] || "").trim() : "";
-      let sellPrice = 0;
-      if (headerMap.sellPrice !== undefined) {
-        const sp = Number(cells[headerMap.sellPrice]);
-        sellPrice = Number.isFinite(sp) && sp >= 0 ? sp : 0;
-      }
-
-      valid.push({
-        id: uid(),
-        size: sizeNorm,
-        brand: brand,
-        model: model,
-        condition: condition,
-        qty: qty,
-        cost: cost,
-        sellPrice: sellPrice,
-        treadDepth: treadDepth,
-        notes: notes,
-      });
-    });
-
-    return { valid, skipped, totalRows: dataLines.length };
-  }
-
-  // ── Bulk upload: open file picker, parse, show preview ───────────────────
-  function openBulkUpload() {
-    if (!fileInputRef.current) return;
-    fileInputRef.current.value = ''; // reset so re-uploading the same file works
-    fileInputRef.current.click();
-  }
-
-  async function handleFileSelected(e) {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const result = parseInventoryCsv(text);
-      setBulkPreview({
-        valid: result.valid,
-        skipped: result.skipped,
-        totalRows: result.totalRows,
-        fileName: file.name,
-      });
-    } catch (err) {
-      console.warn('bulk upload parse:', err);
-      try { if (window.toast) window.toast('Could not parse CSV: ' + (err.message || 'unknown'), 'error', 4500); } catch(_) {}
-    }
-  }
-
-  // ── Confirm import: smart-merge by size+condition into existing inventory ──
-  function confirmBulkImport() {
-    if (!bulkPreview || bulkPreview.valid.length === 0) return;
-
-    // Match key: size + condition. Per spec ("merge duplicate tire sizes by
-    // adding quantities together"), but preserves New/Used split because tread
-    // depth and pricing differ between conditions. Brand/model live on the row
-    // but don't gate the merge — the dominant brand of the most recent upload
-    // wins for the merged row.
-    const keyOf = i => {
-      const sz = normalizeTireSize(i.size || '') || (i.size || '').trim();
-      const cond = String(i.condition || '').toLowerCase() === 'used' ? 'used' : 'new';
-      return sz + '||' + cond;
-    };
-
-    const existing = Array.isArray(inventory) ? inventory : [];
-    const finalList = existing.map(it => ({...it}));
-    const byKey = {};
-    finalList.forEach(it => { byKey[keyOf(it)] = it; });
-
-    let mergedRows = 0;
-    let newRows = 0;
-    bulkPreview.valid.forEach(item => {
-      const k = keyOf(item);
-      const match = byKey[k];
-      if (match) {
-        // Sum quantities. Fill cost/sellPrice/brand/model/notes if existing was empty.
-        match.qty = Number(match.qty || 0) + Number(item.qty || 0);
-        if (!match.cost && item.cost) match.cost = item.cost;
-        if (!match.sellPrice && item.sellPrice) match.sellPrice = item.sellPrice;
-        if (!match.brand && item.brand) match.brand = item.brand;
-        if (!match.model && item.model) match.model = item.model;
-        if (!match.treadDepth && item.treadDepth) match.treadDepth = item.treadDepth;
-        if (item.notes && item.notes !== match.notes) {
-          match.notes = match.notes ? (match.notes + ' | ' + item.notes) : item.notes;
-        }
-        mergedRows++;
-      } else {
-        finalList.push(item);
-        byKey[k] = item;
-        newRows++;
-      }
-    });
-
-    // setInventory triggers Firestore write via handleSetInventory bridge in App.
-    setInventory(finalList);
-    setBulkPreview(null);
-
-    const parts = [];
-    if (newRows > 0) parts.push(newRows + ' new');
-    if (mergedRows > 0) parts.push(mergedRows + ' merged');
-    if (bulkPreview.skipped.length > 0) parts.push(bulkPreview.skipped.length + ' skipped');
-    try { if (window.toast) window.toast('Import complete: ' + parts.join(', '), 'success', 3500); } catch(_) {}
-  }
-
-  // ── Delete all stock: open modal, require typed DELETE ───────────────────
-  function openDeleteAllModal() {
-    setDeleteConfirmText('');
-    setShowDeleteModal(true);
-  }
-
-  function confirmDeleteAll() {
-    if (deleteConfirmText !== 'DELETE') return;
-    try {
-      const count = Array.isArray(inventory) ? inventory.length : 0;
-
-      // FIX (delete-all bug): stamp wipe timestamp BEFORE setInventory so
-      // the App's listener (which fires after batched cloud delete commits)
-      // sees the wipe marker and discards any ghost data within the grace
-      // window. This is the belt-and-braces protection against listener
-      // races, stale replication, multi-device sync echo, and cache replay.
-      try { localStorage.setItem('wr2_inv_wiped_at', String(Date.now())); } catch(_) {}
-
-      // setInventory([]) → handleSetInventory in App, which detects the wipe
-      // and uses a batched cloud delete (instead of per-row fbDel) so the
-      // Firestore listener only fires once at the end.
-      // Job history, invoices, customers, payouts, expenses are NOT touched.
-      setInventory([]);
-      setShowDeleteModal(false);
-      setDeleteConfirmText('');
-      try { if (window.toast) window.toast('All stock deleted (' + count + ' items)', 'success'); } catch(_) {}
-    } catch (e) {
-      console.warn('deleteAll:', e);
-      try { if (window.toast) window.toast('Delete failed: ' + (e.message || 'unknown'), 'error'); } catch(_) {}
-    }
-  }
-
-  function cancelDeleteAll() {
-    setShowDeleteModal(false);
-    setDeleteConfirmText('');
-  }
-
-  // ── Sample CSV download ──────────────────────────────────────────────────
-  function downloadSampleCsv() {
-    const csv = [
-      'tireSize,quantity,condition,cost,brand,model,treadDepth,notes',
-      '245/45R18,4,used,55,Firestone,Firehawk,7/32,good set',
-      '275/55R20,2,new,160,Goodyear,Eagle,,new pair',
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'wheel-rush-inventory-template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-    try { if (window.toast) window.toast('Sample CSV downloaded', 'info'); } catch(_) {}
-  }
-
   // ── best sellers ──────────────────────────────────────────────────────────
   const bestSellers = useMemo(function() {
     const c = {};
@@ -3208,94 +2661,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
     });
     return Object.keys(c).sort(function(a,b){ return c[b] - c[a]; }).slice(0, 5);
   }, [jobsArr]);
-
-  // ── HOT SIZES: top 5 sizes deducted in last 30 days ──────────────────────
-  // Different from `bestSellers` (which is just job-count): this weighs by
-  // actual qty deducted and limits the window to recent activity. Drives the
-  // "tap-to-filter" chip strip at the top of the inventory list. If a size
-  // has had 0 movement in 30 days, it doesn't show up here.
-  //
-  // Source priority for qty:
-  //   1. inventoryDeductions[].deducted (most accurate — reflects actual stock pull)
-  //   2. inventoryUsed.qty (older format)
-  //   3. Job-level qty (fallback when neither marker is present)
-  const hotSizes = useMemo(function() {
-    const cutoffMs = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const counts = {};
-    jobsArr.forEach(function(j) {
-      if (!j) return;
-      const dateStr = j.date || '';
-      if (!dateStr) return;
-      // Job dates are YYYY-MM-DD strings — Date parses these reliably
-      const t = new Date(dateStr).getTime();
-      if (!Number.isFinite(t) || t < cutoffMs) return;
-
-      // Prefer the canonical deduction record over typed tireSize because
-      // inventory deductions are normalized.
-      const deds = Array.isArray(j.inventoryDeductions) ? j.inventoryDeductions : null;
-      if (deds && deds.length > 0) {
-        deds.forEach(function(d) {
-          const sz = normalizeTireSize(d.size || '') || (d.size || '').trim();
-          const q  = Number(d.deducted || 0);
-          if (sz && q > 0) counts[sz] = (counts[sz] || 0) + q;
-        });
-        return;
-      }
-      const used = j.inventoryUsed;
-      if (used && used.size) {
-        const sz = normalizeTireSize(used.size) || String(used.size).trim();
-        const q  = Number(used.qty || 0);
-        if (sz && q > 0) counts[sz] = (counts[sz] || 0) + q;
-        return;
-      }
-      // Fallback: tireSize + qty on the job record
-      const sz = normalizeTireSize(j.tireSize || '') || String(j.tireSize || '').trim();
-      const q  = Math.max(1, Number(j.qty || 1));
-      if (sz) counts[sz] = (counts[sz] || 0) + q;
-    });
-    return Object.keys(counts)
-      .map(function(sz) { return { size: sz, count: counts[sz] }; })
-      .sort(function(a, b) { return b.count - a.count; })
-      .slice(0, 5);
-  }, [jobsArr]);
-
-  // ── Compact view toggle ──────────────────────────────────────────────────
-  // Persists to localStorage so the user's preference survives reloads.
-  // List = current fat cards (default). Compact = dense one-line rows for
-  // power users with lots of inventory.
-  const [compactView, setCompactView] = useState(function() {
-    try {
-      const v = localStorage.getItem('wr2_inv_compact');
-      return v === '1';
-    } catch(_) { return false; }
-  });
-  const toggleCompactView = function() {
-    setCompactView(function(prev) {
-      const next = !prev;
-      try { localStorage.setItem('wr2_inv_compact', next ? '1' : '0'); } catch(_) {}
-      return next;
-    });
-  };
-
-  // ── Margin classification ────────────────────────────────────────────────
-  // Healthy ≥ 40%, Thin 20–39%, Loss < 20% (or unpriced).
-  // Returns { pct, kind } where kind is 'good'|'thin'|'bad'|'none'.
-  function marginInfo(item) {
-    const cost  = Number(item.cost || 0);
-    const sell  = Number(item.sellPrice || 0);
-    if (sell <= 0 || cost <= 0) return { pct: null, kind: 'none' };
-    const pct = ((sell - cost) / sell) * 100;
-    let kind = 'bad';
-    if (pct >= 40) kind = 'good';
-    else if (pct >= 20) kind = 'thin';
-    return { pct: Math.round(pct), kind: kind };
-  }
-  function marginColors(kind) {
-    if (kind === 'good') return { fg: 'var(--green)', bg: 'var(--green-dim)' };
-    if (kind === 'thin') return { fg: 'var(--amber)', bg: 'var(--amber-dim)' };
-    if (kind === 'bad')  return { fg: 'var(--red)',   bg: 'var(--red-dim)'   };
-    return { fg: 'var(--t3)', bg: 'var(--s3)' };
-  }
 
   // ── NEW TIRE SCREEN: save handler ─────────────────────────────────────────
   function ntPatch(k, v) {
@@ -3711,8 +3076,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
     const isUsed = String(item.condition||'').toLowerCase() === 'used';
     const tread  = String(item.treadDepth||'').trim();
     const price  = Number(item.sellPrice||0);
-    const mInfo  = marginInfo(item);
-    const mClr   = marginColors(mInfo.kind);
 
     return html`<div key=${item.id} style=${{borderBottom:idx<total-1?'1px solid var(--border2)':'none'}}>
       <div style=${{display:'flex',alignItems:'center',padding:'12px 18px',gap:12,cursor:'pointer'}}
@@ -3726,7 +3089,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
           </div>
           <div style=${{display:'flex',alignItems:'center',gap:8,marginTop:3,flexWrap:'wrap'}}>
             ${price>0 && html`<span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:13,color:'var(--t2)'}}>${money(price)} ea</span>`}
-            ${price>0 && mInfo.pct !== null && html`<span title=${'Margin: '+mInfo.pct+'%'} style=${{fontSize:9,fontWeight:800,color:mClr.fg,background:mClr.bg,padding:'2px 7px',borderRadius:999,letterSpacing:'.3px',fontFamily:'"IBM Plex Mono",monospace'}}>${mInfo.pct}%</span>`}
             ${price>0 && html`<span style=${{fontSize:11,color:'var(--t3)'}}>•</span>`}
             <span style=${{fontSize:11,color:'var(--t3)',fontWeight:600}}>Qty: <span style=${{color:isOut?'var(--red)':(isLow?'var(--amber)':'var(--t1)'),fontWeight:800,fontFamily:'"IBM Plex Mono",monospace'}}>${qty}</span></span>
           </div>
@@ -3750,37 +3112,11 @@ function Inventory({inventory, setInventory, jobs, user}) {
 
   return html`<div class="screen"><div class="page page-enter">
 
-    <!-- hidden file input for bulk upload -->
-    <input ref=${fileInputRef} type="file" accept=".csv,text/csv" style=${{display:'none'}} onChange=${handleFileSelected}/>
-
     <!-- stats strip -->
     <div class="kpi-grid three card-anim">
       <div class="kpi"><div class="kpi-label">Total Tires</div><div class="kpi-value">${totalQty}</div><div class="kpi-sub">${deduped.length} sizes</div></div>
       <div class="kpi"><div class="kpi-label">Stock Value</div><div class="kpi-value" style=${{fontSize:16}}>${money(totalVal)}</div><div class="kpi-sub">at cost</div></div>
       <div class="kpi"><div class="kpi-label">Out of Stock</div><div class="kpi-value" style=${{fontSize:20,color:outStock.length>0?'var(--amber)':'var(--t3)'}}>${outStock.length}</div><div class="kpi-sub">sizes</div></div>
-    </div>
-
-    <!-- ── Admin Actions ──────────────────────────────────────────────── -->
-    <!-- Two-column row of large mobile-friendly tap targets, full-width on small screens -->
-    <div class="card-anim" style=${{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
-      <button class="press-scale" onClick=${openBulkUpload}
-        style=${{background:'linear-gradient(135deg,rgba(79,142,247,.15),rgba(79,142,247,.06))',border:'1px solid rgba(79,142,247,.3)',color:'var(--blue)',borderRadius:14,padding:'14px 12px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4,minHeight:64,letterSpacing:'-.1px'}}>
-        <span style=${{fontSize:20}}>📤</span>
-        <span>Bulk Upload CSV</span>
-      </button>
-      <button class="press-scale" onClick=${openDeleteAllModal}
-        style=${{background:'linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.04))',border:'1px solid rgba(239,68,68,.3)',color:'var(--red)',borderRadius:14,padding:'14px 12px',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:4,minHeight:64,letterSpacing:'-.1px'}}>
-        <span style=${{fontSize:20}}>🗑</span>
-        <span>Delete All Stock</span>
-      </button>
-    </div>
-
-    <!-- Sample CSV download — small inline link, no visual weight -->
-    <div class="card-anim" style=${{textAlign:'center',marginBottom:14}}>
-      <button onClick=${downloadSampleCsv}
-        style=${{background:'transparent',border:'none',color:'var(--t3)',fontSize:11,fontWeight:600,cursor:'pointer',padding:'4px 8px',textDecoration:'underline',textUnderlineOffset:'3px'}}>
-        ↓ Download sample CSV template
-      </button>
     </div>
 
     <!-- out-of-stock alerts -->
@@ -3793,54 +3129,13 @@ function Inventory({inventory, setInventory, jobs, user}) {
       </div>
     </div>`}
 
-    <!-- ── HOT SIZES (last 30 days) ───────────────────────────────────── -->
-    <!-- Pinned strip of the 5 sizes most deducted in the last 30 days.
-         Tap a chip → fills the search bar so user jumps straight to that size.
-         Hidden when no recent movement exists. -->
-    ${hotSizes.length > 0 && html`<div class="card-anim" style=${{marginBottom:12}}>
-      <div style=${{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8,padding:'0 2px'}}>
-        <div style=${{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'1px',color:'var(--t3)',display:'flex',alignItems:'center',gap:6}}>
-          <span style=${{fontSize:11}}>🔥</span> Hot Sizes · 30d
-        </div>
-        <div style=${{fontSize:10,color:'var(--t3)',fontWeight:600}}>tap to filter</div>
-      </div>
-      <div style=${{display:'flex',gap:8,overflowX:'auto',paddingBottom:4,WebkitOverflowScrolling:'touch'}}>
-        ${hotSizes.map(function(h) {
-          const isActive = search === h.size;
-          return html`<button key=${h.size} type="button" class="press-scale"
-            onClick=${function(){ setSearch(isActive ? '' : h.size); }}
-            style=${{
-              flex:'0 0 auto',
-              background: isActive ? 'linear-gradient(135deg,#5a97ff,#3d7ef5)' : 'var(--s2)',
-              border: isActive ? '1px solid var(--blue)' : '1px solid var(--border)',
-              borderRadius: 14,
-              padding: '10px 14px',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              minWidth: 110,
-              boxShadow: isActive ? '0 4px 12px rgba(79,142,247,.3)' : 'none',
-            }}>
-            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:800,fontSize:13,color:isActive?'#fff':'var(--t1)',letterSpacing:'-.2px'}}>${h.size}</div>
-            <div style=${{fontSize:10,color:isActive?'rgba(255,255,255,.85)':'var(--t3)',fontWeight:700,marginTop:2}}>${h.count} sold</div>
-          </button>`;
-        })}
-      </div>
-    </div>`}
-
-    <!-- search + view toggle + add -->
+    <!-- search + add -->
     <div style=${{display:'flex',gap:8,marginBottom:10}}>
       <input value=${search} onChange=${function(e){ setSearch(e.target.value); }}
         placeholder="Search tire size..."
-        style=${{flex:1,minWidth:0,background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,padding:'13px 16px',fontSize:15,outline:'none',color:'var(--t1)'}}/>
-      <button class="press-scale" onClick=${toggleCompactView}
-        title=${compactView ? 'Switch to list view' : 'Switch to compact view'}
-        style=${{flexShrink:0,padding:'13px 14px',fontSize:14,borderRadius:12,background:'var(--s2)',border:'1px solid var(--border)',color:'var(--t2)',cursor:'pointer',fontWeight:700,minWidth:48,display:'flex',alignItems:'center',justifyContent:'center'}}>
-        ${compactView ? '☰' : '⊟'}
-      </button>
+        style=${{flex:1,background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,padding:'13px 16px',fontSize:15,outline:'none',color:'var(--t1)'}}/>
       <button class="btn primary press-scale"
-        style=${{flexShrink:0,padding:'13px 18px',fontSize:14,borderRadius:12}}
+        style=${{flexShrink:0,padding:'13px 20px',fontSize:14,borderRadius:12}}
         onClick=${function(){ setNt(EMPTY_NEW); setNtError(''); setView('new'); }}>+ Add</button>
     </div>
 
@@ -3874,56 +3169,7 @@ function Inventory({inventory, setInventory, jobs, user}) {
     <!-- GROUPED LIST -->
     ${totalFilteredCount===0
       ? html`<${EmptyState} icon="🛞" title="No matching tires" sub=${search? "Try a different search." : "Tap + Add to log a tire."}/>`
-      : compactView
-        // ── COMPACT VIEW ──────────────────────────────────────────────
-        // Dense one-line per row, ~18px tall + padding. Fits ~20 rows
-        // per phone screen vs ~5 in list view. Grouped by size with a
-        // sticky size header. Tap row to expand the same edit panel.
-        ? html`<div class="card card-anim" style=${{overflow:'hidden'}}>
-            ${grouped.map(function(grp, gi){
-              return html`<div key=${grp.size}>
-                ${gi>0 && html`<div style=${{height:1,background:'var(--border2)'}}/>`}
-                <div style=${{padding:'8px 14px',background:'var(--s2)',borderBottom:'1px solid var(--border2)'}}>
-                  <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:800,fontSize:13,color:'var(--t1)',letterSpacing:'-.2px'}}>${grp.size}</div>
-                </div>
-                ${[...grp.newRows, ...grp.usedRows].map(function(item, idx, all){
-                  const isEditing = editId === item.id;
-                  const qty       = Number(item.qty || 0);
-                  const isOut     = qty === 0;
-                  const isLow     = qty > 0 && qty <= 2;
-                  const isUsed    = String(item.condition || '').toLowerCase() === 'used';
-                  const price     = Number(item.sellPrice || 0);
-                  const cost      = Number(item.cost || 0);
-                  const subline   = [item.brand, item.model].filter(Boolean).join(' ') || (isUsed ? 'Used' : 'New');
-                  const mInfo     = marginInfo(item);
-                  const mClr      = marginColors(mInfo.kind);
-                  return html`<div key=${item.id} style=${{borderBottom:idx<all.length-1?'1px solid var(--border2)':'none'}}>
-                    <div onClick=${function(){ setEditId(isEditing ? null : item.id); }}
-                      style=${{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',cursor:'pointer'}}>
-                      <!-- condition dot -->
-                      <div style=${{width:6,height:6,borderRadius:'50%',background:isUsed?'var(--amber)':'var(--green)',flexShrink:0}}/>
-                      <!-- name -->
-                      <div style=${{flex:1,minWidth:0,fontSize:13,fontWeight:600,color:'var(--t1)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>${subline}</div>
-                      <!-- margin pill (compact) -->
-                      ${mInfo.pct !== null && html`<span style=${{fontSize:9,fontWeight:800,color:mClr.fg,background:mClr.bg,padding:'2px 6px',borderRadius:4,letterSpacing:'.2px',fontFamily:'"IBM Plex Mono",monospace',flexShrink:0}}>${mInfo.pct}%</span>`}
-                      <!-- price -->
-                      ${price > 0 && html`<div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:12,color:'var(--t2)',flexShrink:0,minWidth:48,textAlign:'right'}}>${money(price)}</div>`}
-                      <!-- qty pill -->
-                      <div style=${{
-                        background:isOut?'var(--red-dim)':(isLow?'var(--amber-dim)':'var(--s3)'),
-                        color:isOut?'var(--red)':(isLow?'var(--amber)':'var(--t1)'),
-                        fontFamily:'"IBM Plex Mono",monospace', fontWeight:800, fontSize:12,
-                        padding:'3px 9px', borderRadius:6, minWidth:32, textAlign:'center', flexShrink:0,
-                      }}>${qty}</div>
-                    </div>
-                    ${isEditing && renderEditPanel(item)}
-                  </div>`;
-                })}
-              </div>`;
-            })}
-          </div>`
-        // ── LIST VIEW (current default fat cards) ─────────────────────
-        : html`<div style=${{display:'flex',flexDirection:'column',gap:14}}>
+      : html`<div style=${{display:'flex',flexDirection:'column',gap:14}}>
           ${grouped.map(function(grp){
             return html`<div key=${grp.size} class="card card-anim" style=${{overflow:'hidden'}}>
               <!-- size header -->
@@ -3943,109 +3189,6 @@ function Inventory({inventory, setInventory, jobs, user}) {
             </div>`;
           })}
         </div>`}
-
-    <!-- ── Delete All confirmation modal ─────────────────────────────── -->
-    ${showDeleteModal && html`<div
-      onClick=${cancelDeleteAll}
-      style=${{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div onClick=${e => e.stopPropagation()}
-        style=${{background:'var(--s1)',border:'1px solid var(--border)',borderRadius:18,padding:24,maxWidth:420,width:'100%',boxShadow:'0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(239,68,68,.2)',animation:'scaleIn .25s cubic-bezier(.34,1.56,.64,1)'}}>
-        <div style=${{textAlign:'center',marginBottom:18}}>
-          <div style=${{fontSize:42,marginBottom:8}}>⚠️</div>
-          <div style=${{fontSize:20,fontWeight:800,color:'var(--t1)',letterSpacing:'-.5px',marginBottom:6}}>Delete All Stock?</div>
-          <div style=${{fontSize:13,color:'var(--t2)',lineHeight:1.5}}>This will permanently remove all <strong style=${{color:'var(--red)',fontWeight:700}}>${inv.length}</strong> inventory item${inv.length===1?'':'s'}. Job history, invoices, and customer data will not be affected.</div>
-        </div>
-        <div style=${{marginBottom:16}}>
-          <div style=${{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'1px',color:'var(--t3)',marginBottom:8}}>Type DELETE to confirm</div>
-          <input
-            value=${deleteConfirmText}
-            onChange=${e => setDeleteConfirmText(e.target.value)}
-            placeholder="DELETE"
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellcheck="false"
-            style=${{width:'100%',background:'var(--s3)',border:deleteConfirmText==='DELETE'?'1.5px solid var(--red)':'1px solid var(--border)',borderRadius:12,padding:'14px 16px',fontSize:16,color:'var(--t1)',outline:'none',fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,letterSpacing:'2px',textAlign:'center'}}/>
-        </div>
-        <div style=${{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-          <button class="press-scale" onClick=${cancelDeleteAll}
-            style=${{background:'var(--s3)',color:'var(--t1)',border:'1px solid var(--border)',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:'pointer'}}>Cancel</button>
-          <button class="press-scale" onClick=${confirmDeleteAll} disabled=${deleteConfirmText !== 'DELETE'}
-            style=${{background:deleteConfirmText==='DELETE'?'var(--red)':'var(--s3)',color:deleteConfirmText==='DELETE'?'#fff':'var(--t3)',border:'none',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:deleteConfirmText==='DELETE'?'pointer':'not-allowed',transition:'all .15s'}}>Delete All</button>
-        </div>
-      </div>
-    </div>`}
-
-    <!-- ── Bulk upload preview modal ─────────────────────────────────── -->
-    ${bulkPreview && html`<div
-      onClick=${() => setBulkPreview(null)}
-      style=${{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',zIndex:1000,display:'flex',alignItems:'flex-end',justifyContent:'center',padding:0}}>
-      <div onClick=${e => e.stopPropagation()}
-        style=${{background:'var(--s1)',border:'1px solid var(--border)',borderTopLeftRadius:20,borderTopRightRadius:20,padding:'24px 20px',maxWidth:560,width:'100%',maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 -20px 60px rgba(0,0,0,.6)',animation:'fadeSlideUp .3s cubic-bezier(.34,1.56,.64,1)',paddingBottom:'calc(24px + env(safe-area-inset-bottom))'}}>
-        <!-- Drag handle -->
-        <div style=${{width:40,height:4,background:'var(--s4)',borderRadius:2,margin:'0 auto 16px'}}/>
-
-        <div style=${{textAlign:'center',marginBottom:18,flexShrink:0}}>
-          <div style=${{fontSize:36,marginBottom:6}}>📋</div>
-          <div style=${{fontSize:18,fontWeight:800,color:'var(--t1)',letterSpacing:'-.3px'}}>Import Preview</div>
-          <div style=${{fontSize:11,color:'var(--t3)',marginTop:4,fontFamily:'"IBM Plex Mono",monospace',wordBreak:'break-all'}}>${bulkPreview.fileName}</div>
-        </div>
-
-        <!-- Stats -->
-        <div style=${{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:18,flexShrink:0}}>
-          <div style=${{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
-            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:22,fontWeight:800,color:'var(--t1)',letterSpacing:'-.5px'}}>${bulkPreview.totalRows}</div>
-            <div style=${{fontSize:9,fontWeight:700,color:'var(--t3)',textTransform:'uppercase',letterSpacing:'.5px',marginTop:3}}>Total Rows</div>
-          </div>
-          <div style=${{background:'var(--green-dim)',border:'1px solid rgba(34,197,94,.25)',borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
-            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:22,fontWeight:800,color:'var(--green)',letterSpacing:'-.5px'}}>${bulkPreview.valid.length}</div>
-            <div style=${{fontSize:9,fontWeight:700,color:'var(--green)',textTransform:'uppercase',letterSpacing:'.5px',marginTop:3}}>Valid</div>
-          </div>
-          <div style=${{background:bulkPreview.skipped.length>0?'var(--amber-dim)':'var(--s2)',border:'1px solid '+(bulkPreview.skipped.length>0?'rgba(245,158,11,.3)':'var(--border)'),borderRadius:12,padding:'12px 8px',textAlign:'center'}}>
-            <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontSize:22,fontWeight:800,color:bulkPreview.skipped.length>0?'var(--amber)':'var(--t3)',letterSpacing:'-.5px'}}>${bulkPreview.skipped.length}</div>
-            <div style=${{fontSize:9,fontWeight:700,color:bulkPreview.skipped.length>0?'var(--amber)':'var(--t3)',textTransform:'uppercase',letterSpacing:'.5px',marginTop:3}}>Skipped</div>
-          </div>
-        </div>
-
-        <!-- Scrollable preview list -->
-        <div style=${{flex:1,minHeight:0,overflowY:'auto',background:'var(--s2)',border:'1px solid var(--border)',borderRadius:12,marginBottom:16}}>
-          ${bulkPreview.valid.length>0 && html`<div>
-            ${bulkPreview.valid.slice(0,30).map(function(item, idx) {
-              return html`<div key=${idx} style=${{padding:'10px 14px',borderBottom:idx<Math.min(bulkPreview.valid.length,30)-1?'1px solid var(--border2)':'none',display:'flex',alignItems:'center',gap:10}}>
-                <div style=${{flex:1,minWidth:0}}>
-                  <div style=${{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                    <span style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:13,color:'var(--t1)'}}>${item.size}</span>
-                    <span style=${{fontSize:9,fontWeight:800,padding:'2px 7px',borderRadius:999,letterSpacing:'.3px',color:item.condition==='Used'?'var(--amber)':'var(--green)',background:item.condition==='Used'?'var(--amber-dim)':'var(--green-dim)'}}>${item.condition.toUpperCase()}</span>
-                  </div>
-                  ${(item.brand || item.model) && html`<div style=${{fontSize:11,color:'var(--t3)',marginTop:2}}>${[item.brand, item.model].filter(Boolean).join(' ')}</div>`}
-                </div>
-                <div style=${{textAlign:'right',flexShrink:0}}>
-                  <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:13,color:'var(--t1)'}}>×${item.qty}</div>
-                  ${item.cost>0 && html`<div style=${{fontSize:10,color:'var(--t3)',marginTop:1}}>${money(item.cost)} ea</div>`}
-                </div>
-              </div>`;
-            })}
-            ${bulkPreview.valid.length > 30 && html`<div style=${{padding:'10px 14px',fontSize:11,color:'var(--t3)',textAlign:'center',fontWeight:600}}>…and ${bulkPreview.valid.length - 30} more</div>`}
-          </div>`}
-          ${bulkPreview.skipped.length>0 && html`<div style=${{borderTop:bulkPreview.valid.length>0?'2px solid var(--border)':'none'}}>
-            <div style=${{padding:'8px 14px',fontSize:9,fontWeight:800,color:'var(--amber)',textTransform:'uppercase',letterSpacing:'.6px',background:'var(--amber-dim)'}}>Skipped (${bulkPreview.skipped.length})</div>
-            ${bulkPreview.skipped.slice(0,10).map(function(s, idx) {
-              return html`<div key=${idx} style=${{padding:'8px 14px',borderBottom:idx<Math.min(bulkPreview.skipped.length,10)-1?'1px solid var(--border2)':'none',fontSize:11,color:'var(--t2)'}}>
-                <span style=${{fontFamily:'"IBM Plex Mono",monospace',color:'var(--t3)'}}>Line ${s.line}:</span> ${s.reason}
-              </div>`;
-            })}
-            ${bulkPreview.skipped.length > 10 && html`<div style=${{padding:'8px 14px',fontSize:11,color:'var(--t3)',textAlign:'center'}}>…and ${bulkPreview.skipped.length - 10} more</div>`}
-          </div>`}
-        </div>
-
-        <!-- Action buttons -->
-        <div style=${{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,flexShrink:0}}>
-          <button class="press-scale" onClick=${() => setBulkPreview(null)}
-            style=${{background:'var(--s3)',color:'var(--t1)',border:'1px solid var(--border)',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:'pointer'}}>Cancel</button>
-          <button class="press-scale" onClick=${confirmBulkImport} disabled=${bulkPreview.valid.length===0}
-            style=${{background:bulkPreview.valid.length>0?'linear-gradient(135deg,#5a97ff,#3d7ef5)':'var(--s3)',color:bulkPreview.valid.length>0?'#fff':'var(--t3)',border:'none',borderRadius:12,padding:'14px',fontSize:14,fontWeight:700,cursor:bulkPreview.valid.length>0?'pointer':'not-allowed',boxShadow:bulkPreview.valid.length>0?'0 4px 16px rgba(79,142,247,.3)':'none'}}>Import ${bulkPreview.valid.length}</button>
-        </div>
-      </div>
-    </div>`}
 
   </div></div>`;
 }
@@ -4129,30 +3272,12 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
       ${SERVICE_KEYS.filter(k=>k!=="Other").map(name=>{
         const rule=(settings.servicePricing||{})[name]||DEFAULT_SERVICE_PRICING[name]||{enabled:true,basePrice:90,minProfit:60};
         const patchSvc=(patch)=>setSettings(p=>({...p,servicePricing:{...((p&&p.servicePricing)||DEFAULT_SERVICE_PRICING),[name]:{...rule,...patch}}}));
-        // Tier-based services don't use minProfit — the tier table in
-        // calculateJobPricing is authoritative. Hide minProfit field and
-        // show the tier breakdown so the owner sees what's actually charged.
-        const isTierBased = (name === "Tire Replacement" || name === "Tire Installation");
         return html`<div key=${name} style=${{padding:"14px 18px",borderBottom:"1px solid var(--border2)",opacity:rule.enabled===false?0.5:1}}>
           <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <div style=${{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-              <div style=${{fontSize:14,fontWeight:700,color:"var(--t1)",letterSpacing:"-.2px"}}>${name}</div>
-              ${isTierBased && html`<span style=${{fontSize:9,fontWeight:800,color:"var(--blue)",background:"var(--blue-dim)",borderRadius:999,padding:"2px 8px",letterSpacing:".3px"}}>TIER PRICING</span>`}
-            </div>
+            <div style=${{fontSize:14,fontWeight:700,color:"var(--t1)",letterSpacing:"-.2px"}}>${name}</div>
             <button onClick=${()=>patchSvc({enabled:!rule.enabled})} style=${{border:"none",borderRadius:20,padding:"4px 12px",fontSize:11,fontWeight:700,cursor:"pointer",background:rule.enabled!==false?"var(--green)":"var(--s3)",color:rule.enabled!==false?"#fff":"var(--t3)"}}>${rule.enabled!==false?"ON":"OFF"}</button>
           </div>
-          ${isTierBased ? html`<div>
-            <div style=${{fontSize:11,color:"var(--t3)",marginBottom:8,lineHeight:1.5}}>
-              Target profit by qty (vehicle add-on stacks on top):
-            </div>
-            <div style=${{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:6}}>
-              ${[1,2,3,4].map(q => html`<div key=${q} style=${{padding:"8px 6px",background:"var(--s3)",border:"1px solid var(--border)",borderRadius:8,textAlign:"center"}}>
-                <div style=${{fontSize:9,fontWeight:800,color:"var(--t3)",letterSpacing:".5px"}}>${q} TIRE${q>1?"S":""}</div>
-                <div style=${{fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,fontSize:14,color:"var(--t1)",marginTop:3}}>${money(REPLACEMENT_TIER_PRICING[q])}</div>
-              </div>`)}
-            </div>
-            <div style=${{fontSize:10,color:"var(--t3)"}}>5+ tires: ${money(REPLACEMENT_TIER_PRICING[4])} + $100 per extra tire</div>
-          </div>` : html`<div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div>
               <div style=${{fontSize:9,fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"var(--t3)",marginBottom:5}}>Base Price</div>
               <div style=${{position:"relative"}}>
@@ -4167,7 +3292,7 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
                 <input type="number" min="0" value=${rule.minProfit||""} onChange=${e=>patchSvc({minProfit:Number(e.target.value||0)})} style=${{border:"1px solid var(--border)",background:"var(--s3)",color:"var(--t1)",borderRadius:10,padding:"10px 13px 10px 24px",fontSize:15,fontFamily:'"IBM Plex Mono",monospace',fontWeight:700,outline:"none",width:"100%"}}/>
               </div>
             </div>
-          </div>`}
+          </div>
         </div>`;
       })}
     </div>
@@ -4206,8 +3331,8 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
     <div class="card card-anim">
       <div class="card-row"><div class="label">Export CSV</div><button class="btn secondary sm press-scale" onClick=${exportCSV}>CSV</button></div>
       <div class="card-row"><div class="label">Full Backup</div><button class="btn secondary sm press-scale" onClick=${exportData}>JSON</button></div>
-      <div class="card-row"><div class="label">Import Backup</div><button class="btn secondary sm press-scale" onClick=${importData}>Import</button></div>
-      <div class="card-row"><div class="label">Reset Inventory</div><button class="btn orange sm press-scale" onClick=${resetInventory}>Reset to Defaults</button></div>
+      <div class="card-row"><div class="label">Import</div><button class="btn secondary sm press-scale" onClick=${importData}>Import</button></div>
+      <div class="card-row"><div class="label">Reset Inventory</div><button class="btn orange sm press-scale" onClick=${resetInventory}>Reset</button></div>
       <div class="card-row"><div class="label" style=${{color:"var(--red)"}}>Reset Everything</div><button class="btn danger sm" onClick=${clearAll}>Reset</button></div>
     </div>
     <div style=${{padding:"8px 0 4px",textAlign:"center",fontSize:11,color:"var(--t3)"}}>Wheel Rush v10 Pro · Firebase Sync</div>
@@ -4275,19 +3400,6 @@ function App() {
   const [prefill,setPrefill] = useState(null);
   const [editJob,setEditJob] = useState(null);
   const pendingRef = useRef([]);
-  // FIX: Synchronous lock for saveJob. useState's `saving` flag isn't synchronous;
-  // a rapid second click within one frame can re-enter saveJob before React
-  // commits the first setSaving(true). useRef gives synchronous read/write.
-  const savingLockRef = useRef(false);
-  // FIX (delete-all bug, layer 2): even with batched cloud delete + ref guard,
-  // there are edge cases where a listener fire can push stale cloud data back
-  // into local state after a wipe (multi-device sync, slow Firestore replication,
-  // browser cache replay). Belt-and-braces: stamp a wipe timestamp in
-  // localStorage when Delete All runs. The listener treats any non-empty fire
-  // within 10 seconds of that stamp as ghost data and discards it.
-  const inventoryHasLoadedRef = useRef(false);
-  const WIPE_GRACE_MS = 10000;
-  const WIPE_KEY = "wr2_inv_wiped_at";
 
   // ── Auth listener ────────────────────────────────────────────────────────
   useEffect(()=>{
@@ -4309,59 +3421,46 @@ function App() {
     setSyncStatus("syncing");
     const u1=fbListen(jobCol(),docs=>{
       const arr=Array.isArray(docs)?docs:[];
-      const hydrated=arr.map(hydrateJobDoc);
+      // Re-hydrate stringified fields from Firestore
+      const hydrated=arr.map(j=>{
+        const out={...j};
+        if(typeof out.inventoryDeductions==="string"){
+          try{ const p=JSON.parse(out.inventoryDeductions); out.inventoryDeductions=Array.isArray(p)?p:null; }
+          catch{ out.inventoryDeductions=null; }
+        }
+        if(typeof out.inventoryUsed==="string"){
+          try{ const p=JSON.parse(out.inventoryUsed); out.inventoryUsed=(p&&typeof p==="object")?p:null; }
+          catch{ out.inventoryUsed=null; }
+        }
+        return out;
+      });
       setJobs(hydrated);persist(KEYS.jobs,hydrated);setSyncStatus("connected");
     });
     const u2=fbListen(invCol(),docs=>{
       const docArr=Array.isArray(docs)?docs:[];
-
-      // FIX (delete-all bug, layer 2): if user just performed Delete All
-      // within last WIPE_GRACE_MS, ignore any non-empty cloud snapshots.
-      // Catches: stale Firestore replication, browser cache replay,
-      // multi-device sync echo, and any other path where ghost data could
-      // come back from the cloud during the wipe window.
-      // Note: marker is NOT cleared on the confirming empty fire. Letting it
-      // expire naturally on the timestamp ensures any out-of-order ghost
-      // snapshot arriving AFTER the empty confirmation is still discarded.
-      let wipedAt = 0;
-      try { wipedAt = Number(localStorage.getItem(WIPE_KEY) || 0); } catch(_) {}
-      const inWipeGrace = wipedAt > 0 && (Date.now() - wipedAt) < WIPE_GRACE_MS;
-      if (inWipeGrace && docArr.length > 0) {
-        // Ghost data within wipe window — ignore. Local state stays empty.
-        return;
+      if(docArr.length>0){
+        setInventory(prev=>{
+          // Keep any blank/pending rows that exist in current local state
+          const blankRows=(Array.isArray(prev)?prev:[]).filter(i=>!(i.size||"").trim());
+          const fbItems=docArr.filter(d=>(d.size||"").trim()).map(sanitizeInvItem);
+          const deduped=dedupeInventory(fbItems);
+          const merged=[...blankRows,...deduped];
+          persist(KEYS.inventory,merged);
+          return merged;
+        });
+        setSyncStatus("connected");
       }
-
-      // Guard: if cloud is empty AND we haven't loaded yet, skip — prevents a
-      // phantom first-fire from clobbering local default inventory at fresh
-      // sign-in. Once we've seen a non-empty snapshot, accept all subsequent
-      // fires (including empty) so Delete All actually persists.
-      if (!inventoryHasLoadedRef.current && docArr.length === 0) return;
-      if (docArr.length > 0) inventoryHasLoadedRef.current = true;
-      setInventory(prev=>{
-        // Keep any blank/pending rows that exist in current local state
-        const blankRows=(Array.isArray(prev)?prev:[]).filter(i=>!(i.size||"").trim());
-        const fbItems=docArr.filter(d=>(d.size||"").trim()).map(sanitizeInvItem);
-        const deduped=dedupeInventory(fbItems);
-        const merged=[...blankRows,...deduped];
-        persist(KEYS.inventory,merged);
-        return merged;
-      });
-      setSyncStatus("connected");
     });
     const u3=fbListen(expCol(),docs=>{const arr=Array.isArray(docs)?docs:[];setExpenses(arr);persist(KEYS.expenses,arr);});
     let u4=()=>{};
     if(settingDoc()){
       u4=settingDoc().onSnapshot(snap=>{
         if(snap&&snap.exists){
-          const d=hydrateSettingsDoc(snap.data());
+          const d=snap.data();
+          Object.keys(d).forEach(k=>{if(typeof d[k]==="string"&&(d[k].startsWith("{")||d[k].startsWith("["))){try{const p=JSON.parse(d[k]);if(p&&typeof p==="object")d[k]=p;}catch{}}});
           // Local edits win over stale Firestore snapshot. Debounced write-back
           // in the persist effect will push local state up to Firestore shortly.
-          setSettings(prev=>{
-            const merged={...DEFAULT_SETTINGS,...d,...prev};
-            if(!Array.isArray(merged.expenses))merged.expenses=DEFAULT_SETTINGS.expenses;
-            persist(KEYS.settings,merged);
-            return merged;
-          });
+          setSettings(prev=>{const merged={...DEFAULT_SETTINGS,...d,...prev};if(!Array.isArray(merged.expenses))merged.expenses=DEFAULT_SETTINGS.expenses;persist(KEYS.settings,merged);return merged;});
         }
       },()=>{});
     }
@@ -4386,11 +3485,6 @@ function App() {
   // ── Save job ─────────────────────────────────────────────────────────────
   // Returns { deductions, shortfall, sizeNormalized, foundAny } so caller can show feedback.
   const saveJob=useCallback(async(job,addAnother)=>{
-    // FIX: Synchronous mutex via useRef. Previous `if (saving)` check relied
-    // on React state propagation which has no synchronous guarantee — two
-    // clicks in one frame both passed the check, causing parallel saves.
-    if (savingLockRef.current) return null;
-    savingLockRef.current = true;
     setSaving(true);
     let deductions=null, shortfall=0, sizeNormalized="", foundAny=false;
     try{
@@ -4469,9 +3563,12 @@ function App() {
         }
       }
 
-      // FIX: Decide deduction state on the job object FIRST, mutate nothing yet.
-      // Inventory state changes happen ONLY after the cloud write succeeds —
-      // ensures local + cloud stay consistent on network failures.
+      // Apply restore + deduct to real state.
+      // Use handleSetInventory (NOT setInventory) so localStorage + Firestore
+      // sync go through the canonical write path with full field set.
+      if (needsRestore) restoreInventoryDeduction(prevDeds, handleSetInventory);
+      if (plan && Array.isArray(plan.plan) && plan.plan.length > 0) applyInventoryDeduction(plan, handleSetInventory);
+
       if (plan) {
         deductions = Array.isArray(plan.plan) ? plan.plan : [];
         shortfall  = Number(plan.shortfall||0);
@@ -4493,44 +3590,6 @@ function App() {
         full.inventoryShortfall = Number(prevJob.inventoryShortfall||0);
         full.inventoryUsed = prevJob.inventoryUsed || null;
       }
-
-      // FIX: Write JOB to Firestore FIRST. If write fails (network drop,
-      // permissions), no inventory deltas applied — clean failure mode.
-      // Local-only mode (no _db) skips this and proceeds to local state.
-      if(user && !isLocalUser(user) && jobCol()){
-        const dedStr = Array.isArray(full.inventoryDeductions) ? JSON.stringify(full.inventoryDeductions) : "";
-        const usedStr = full.inventoryUsed ? JSON.stringify(full.inventoryUsed) : "";
-        try {
-          await jobCol().doc(id).set({
-            id,date:String(full.date||""),startTime:String(full.startTime||""),service:String(full.service||""),vehicleType:String(full.vehicleType||""),area:String(full.area||""),source:String(full.source||""),payment:String(full.payment||""),status:String(full.status||"Completed"),
-            customerName:String(full.customerName||""),customerPhone:String(full.customerPhone||""),
-            tireSize:String(full.tireSize||""),qty:Number(full.qty||1),revenue:Number(full.revenue||0),
-            tireCost:Number(full.tireCost||0),miscCost:Number(full.miscCost||0),miles:Number(full.miles||0),
-            note:String(full.note||""),
-            emergency:!!full.emergency,lateNight:!!full.lateNight,highway:!!full.highway,weekend:!!full.weekend,
-            tireSource:String(full.tireSource||"Inventory"),
-            tireBrand:String(full.tireBrand||""),
-            tireModel:String(full.tireModel||""),
-            tireVendor:String(full.tireVendor||""),
-            saveToInventory:!!full.saveToInventory,
-            inventoryItemId:String(full.inventoryItemId||""),
-            inventoryDeducted:!!full.inventoryDeducted,
-            inventoryDeductions: dedStr,
-            inventoryShortfall: Number(full.inventoryShortfall||0),
-            inventoryUsed: usedStr,
-          });
-        } catch (e) {
-          console.warn("saveJob: Firestore write failed, aborting inventory delta:", e);
-          try { if (window.toast) window.toast("Save failed — try again", "error"); } catch(_){}
-          return null;  // Don't apply inventory deltas if cloud write failed
-        }
-      }
-
-      // Cloud write succeeded (or local-only mode). NOW apply inventory deltas + job state.
-      // Use handleSetInventory (NOT setInventory) so localStorage + Firestore
-      // sync go through the canonical write path with full field set.
-      if (needsRestore) restoreInventoryDeduction(prevDeds, handleSetInventory);
-      if (plan && Array.isArray(plan.plan) && plan.plan.length > 0) applyInventoryDeduction(plan, handleSetInventory);
 
       setJobs(prev=>{const arr=Array.isArray(prev)?prev:[];const exists=arr.find(j=>j.id===id);const next=exists?arr.map(j=>j.id===id?full:j):[full,...arr];persist(KEYS.jobs,next);return next;});
 
@@ -4564,7 +3623,29 @@ function App() {
           }
         } catch(e) { console.warn("saveToInventory:", e); }
       }
-      // Firestore job write moved earlier (cloud-first ordering — see above).
+
+      if(user && !isLocalUser(user) && jobCol()){
+        const dedStr = Array.isArray(full.inventoryDeductions) ? JSON.stringify(full.inventoryDeductions) : "";
+        const usedStr = full.inventoryUsed ? JSON.stringify(full.inventoryUsed) : "";
+        await fbSet(jobCol(),id,{
+          id,date:String(full.date||""),startTime:String(full.startTime||""),service:String(full.service||""),vehicleType:String(full.vehicleType||""),area:String(full.area||""),source:String(full.source||""),payment:String(full.payment||""),status:String(full.status||"Completed"),
+          customerName:String(full.customerName||""),customerPhone:String(full.customerPhone||""),
+          tireSize:String(full.tireSize||""),qty:Number(full.qty||1),revenue:Number(full.revenue||0),
+          tireCost:Number(full.tireCost||0),miscCost:Number(full.miscCost||0),miles:Number(full.miles||0),
+          note:String(full.note||""),
+          emergency:!!full.emergency,lateNight:!!full.lateNight,highway:!!full.highway,weekend:!!full.weekend,
+          tireSource:String(full.tireSource||"Inventory"),
+          tireBrand:String(full.tireBrand||""),
+          tireModel:String(full.tireModel||""),
+          tireVendor:String(full.tireVendor||""),
+          saveToInventory:!!full.saveToInventory,
+          inventoryItemId:String(full.inventoryItemId||""),
+          inventoryDeducted:!!full.inventoryDeducted,
+          inventoryDeductions: dedStr,
+          inventoryShortfall: Number(full.inventoryShortfall||0),
+          inventoryUsed: usedStr,
+        });
+      }
       if(!addAnother){setTab("dashboard");setEditJob(null);}
 
       // Toast feedback + haptic (Android vibrates, iOS no-op)
@@ -4586,12 +3667,9 @@ function App() {
         }
       } catch(e){}
     }catch(e){console.warn("saveJob:",e);}
-    finally{
-      savingLockRef.current = false;
-      setSaving(false);
-    }
+    finally{setSaving(false);}
     return { deductions, shortfall, sizeNormalized, foundAny };
-  },[user,inventory,jobs]);  // saving removed — ref handles it synchronously
+  },[user,inventory,jobs]);
   // Note: handleSetInventory is referenced inside but not in deps because it
   // would cause TDZ — it's declared after saveJob. Safe because it only
   // depends on `user`, which IS in saveJob's deps.
@@ -4634,34 +3712,12 @@ function App() {
       const raw=typeof updater==="function"?updater(prevArr):updater;
       const next=Array.isArray(raw)?raw:prevArr;
       persist(KEYS.inventory,next);
-      // FIX: any non-empty local write clears the wipe marker. This way a
-      // user who hits Delete All then immediately bulk-uploads (or adds a
-      // single tire, or edits qty) doesn't have those new writes treated
-      // as ghost data by the listener's grace-window guard.
-      if (next.length > 0) {
-        try { localStorage.removeItem('wr2_inv_wiped_at'); } catch(_) {}
-      }
       if(user && !isLocalUser(user) && invCol()) {
-        // FIX (delete-all bug): when wiping to empty, use a batched delete
-        // instead of per-row forEach. Per-row fbDel fires the snapshot
-        // listener N times with shrinking doc lists, and each intermediate
-        // fire bounces partial remainders back into local state.
-        // Batched delete = single listener fire at the end = clean wipe.
-        if (next.length === 0 && prevArr.length > 0) {
-          const col = invCol();
-          const ids = prevArr.map(x => String(x.id)).filter(Boolean);
-          const CHUNK = 450; // Firestore batch limit is 500
-          for (let i = 0; i < ids.length; i += CHUNK) {
-            const slice = ids.slice(i, i + CHUNK);
-            const ops = slice.map(id => ({ type: 'delete', ref: col.doc(id) }));
-            fbBatch(ops);
-          }
-        } else {
-          // Normal path: write changed/added rows, delete missing rows.
-          next.filter(x=>(x.size||"").trim()).forEach(x=>fbSet(invCol(),x.id,invPayload(x)));
-          const nextIds=new Set(next.map(x=>String(x.id)));
-          prevArr.forEach(x=>{ if(!nextIds.has(String(x.id))) fbDel(invCol(), x.id); });
-        }
+        // Writes: all current rows with a size
+        next.filter(x=>(x.size||"").trim()).forEach(x=>fbSet(invCol(),x.id,invPayload(x)));
+        // Deletes: rows that existed before but are no longer present
+        const nextIds=new Set(next.map(x=>String(x.id)));
+        prevArr.forEach(x=>{ if(!nextIds.has(String(x.id))) fbDel(invCol(), x.id); });
       }
       return next;
     });
@@ -4684,15 +3740,7 @@ function App() {
       let deds=targetJob.inventoryDeductions;
       if(typeof deds==="string"){try{deds=JSON.parse(deds);}catch{deds=null;}}
       if(Array.isArray(deds)&&deds.length>0){
-        try{
-          restoreInventoryDeduction(deds,handleSetInventory);
-          restoredOnceRef.current.add(id);
-          didRestore=true;
-          // FIX: Auto-release ID after 5s. Long enough to dedupe rapid double-tap
-          // delete clicks, short enough that re-import + delete restores again.
-          // Previously the Set never cleared, silently skipping restore on re-imports.
-          setTimeout(()=>{ restoredOnceRef.current.delete(id); }, 5000);
-        }catch(e){console.warn("restore:",e);}
+        try{restoreInventoryDeduction(deds,handleSetInventory);restoredOnceRef.current.add(id);didRestore=true;}catch(e){console.warn("restore:",e);}
       }
     }
     setJobs(prev=>{const arr=Array.isArray(prev)?prev:[];const next=arr.filter(j=>j.id!==id);persist(KEYS.jobs,next);return next;});
