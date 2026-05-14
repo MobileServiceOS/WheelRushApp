@@ -2,23 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- viewport-fit=cover enables env(safe-area-inset-*) for Dynamic Island / notch -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <!-- PWA / standalone-app meta (Android + iOS) -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wheel Rush" />
-  <meta name="theme-color" content="#0d1020" />
+  <meta name="theme-color" content="#0a0a0f" />
   <title>Wheel Rush — Business Tracker</title>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Icon set — relative paths so it works under GitHub Pages subpath -->
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png">
-  <!-- iOS Home Screen icon. Apple uses 180×180 for newer iPhones. -->
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Wheel Rush">
-  <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="./manifest.json">
 <style>
   :root {
@@ -70,6 +68,40 @@
      Nested scroll containers caused flicker on iOS during momentum scroll. */
   .screen { background:var(--bg); min-height:100%; }
   .page { padding:20px 16px calc(120px + env(safe-area-inset-bottom)); }
+
+  /* ── Install banner — shown only outside standalone mode ─────────────── */
+  .install-banner {
+    position:fixed; left:50%; bottom:calc(96px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    width:calc(100% - 24px); max-width:440px;
+    background:linear-gradient(135deg,rgba(79,142,247,.12),rgba(13,16,32,.95));
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(79,142,247,.25);
+    border-radius:14px;
+    padding:12px 14px;
+    display:flex; align-items:center; gap:12px;
+    box-shadow:0 8px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(79,142,247,.08);
+    z-index:1000;
+    animation:ibSlideUp .4s ease both;
+  }
+  .install-banner .ib-text { flex:1; min-width:0; }
+  .install-banner .ib-title {
+    font-size:12px; font-weight:800; color:#fff;
+    letter-spacing:.3px; line-height:1.2;
+  }
+  .install-banner .ib-sub {
+    font-size:11px; color:rgba(255,255,255,.65);
+    margin-top:2px; line-height:1.35;
+  }
+  .install-banner .ib-close {
+    background:transparent; border:none; color:rgba(255,255,255,.5);
+    font-size:18px; padding:6px 8px; cursor:pointer; flex-shrink:0;
+    border-radius:6px;
+  }
+  .install-banner .ib-close:hover, .install-banner .ib-close:active {
+    background:rgba(255,255,255,.08); color:#fff;
+  }
+  @keyframes ibSlideUp { from{opacity:0;transform:translate(-50%,16px)} to{opacity:1;transform:translate(-50%,0)} }
 
   @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes fadeSlideIn { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
@@ -3345,6 +3377,43 @@ function Settings({settings,setSettings,jobs,setJobs,inventory,setInventory,expe
   </div></div>`;
 }
 
+// ── Install banner ───────────────────────────────────────────────────────────
+// Shown ONLY when the app is NOT running in standalone mode (i.e. opened in a
+// regular browser tab). Prompts user to add to home screen for the full app
+// experience. Dismissible — choice persists in localStorage.
+function InstallBanner() {
+  const [show, setShow] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  useEffect(() => {
+    // Don't render inside an installed PWA
+    const standaloneIOS = window.navigator && window.navigator.standalone === true;
+    const standalonePWA = window.matchMedia && window.matchMedia("(display-mode: standalone)").matches;
+    if (standaloneIOS || standalonePWA) return;
+    // Respect dismissal
+    try { if (localStorage.getItem("wr2-install-dismissed") === "1") return; } catch(e) {}
+    // Detect iOS for tailored copy
+    const ua = (navigator.userAgent || "").toLowerCase();
+    const iosLike = /iphone|ipad|ipod/.test(ua) || (ua.includes("mac") && navigator.maxTouchPoints > 1);
+    setIsIOS(iosLike);
+    // Slight delay so the banner doesn't fight the app's first paint
+    const t = setTimeout(() => setShow(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
+  const dismiss = () => {
+    try { localStorage.setItem("wr2-install-dismissed", "1"); } catch(e) {}
+    setShow(false);
+  };
+  if (!show) return null;
+  return html`<div class="install-banner" role="dialog" aria-label="Install Wheel Rush">
+    <div style=${{fontSize:22,flexShrink:0}}>📲</div>
+    <div class="ib-text">
+      <div class="ib-title">Install Wheel Rush</div>
+      <div class="ib-sub">${isIOS ? "Tap Share → Add to Home Screen for full app mode" : "Install for full app mode"}</div>
+    </div>
+    <button class="ib-close" onClick=${dismiss} aria-label="Dismiss">×</button>
+  </div>`;
+}
+
 // ── Toast system ─────────────────────────────────────────────────────────────
 // Usage anywhere: window.toast("Inventory updated", "success")
 // Kinds: "success" | "warn" | "error" | "info"
@@ -3795,6 +3864,7 @@ function App() {
       </button>`)}
     </nav>
     <${ToastHost}/>
+    <${InstallBanner}/>
   </div>`;
 }
 
